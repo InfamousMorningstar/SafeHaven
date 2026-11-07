@@ -1,0 +1,23 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# Local tooling
+/.remember/
+/.claude/
+
+# Client documents (proposal answers, waiver form, logo). The repo is public, so keep them local.
+/docs/client/
+
+# Signing secrets: never commit these
+keystore.properties
+*.jks
+*.keystore

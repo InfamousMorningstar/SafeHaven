@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder icon (green circle, white heart). Replace with the shelter's logo. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#2E6B5E"
+        android:pathData="M24,2 A22,22 0 1,1 23.99,2 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,36 L14,26 C10,22 12,15 18,15 C21,15 23,17 24,19 C25,17 27,15 30,15 C36,15 38,22 34,26 Z" />
+</vector>
