@@ -13,7 +13,8 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
   (`2026-11-09_0001.pdf`) plus a Room row.
 - **51 unit tests** and **3 instrumented PDF tests** pass, and `lint` reports no errors. A full
   submission works on an emulator that matches the client's tablet (Android 6.0, 1920×1200).
-- Next: phase 4 (staff area). Before that, check the items under "Check with the client".
+- Next: phase 4 (staff area). The client's open questions were answered on 2026-11-09; only the
+  waiver-wording check under "Check with the client" remains.
 
 ## Current state
 
@@ -52,7 +53,7 @@ The IDE's tap/type tool fails on API 23 (it passes a `-d` flag Android 6 doesn't
 | `assembleDebug`, `testDebugUnitTest` | Pass (51 tests) |
 | `connectedDebugAndroidTest` (PDF writer, adult, minor, longest values) | Pass (3 tests) |
 | `lintDebug` | No errors, no `NewApi`; only dependency-version and style warnings |
-| Welcome screen (logo, name, Start) | OK. The logo has a white box behind it (the PNG isn't transparent) |
+| Welcome screen (logo, name, Start) | OK (logo made transparent; no white box) |
 | ZIP `850011234` → `85001-1234`; phone → `(602) 555-0123`; DOB → `06/01/2012` | Works |
 | Initials typed lower case → upper case | Works |
 | DOB under 18 → guardian notice, guardian name field, "Parent/Guardian signature" label | Works |
@@ -112,13 +113,8 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 
 ### Check with the client
 
-- **Email optional?** It's optional in the app because not every visitor has one.
-- **Reason for visit:** the paper form has a free-text line; the app has chips (Adopting,
-  Volunteering, Visiting, Dropping off, Other), and the answer is required.
-- **Who initials for a minor?** The app doesn't say. Probably the guardian, like the signature.
 - **Waiver wording:** confirm that `Waiver.kt` matches their current paper form, and that showing
   it in a public GitHub repo is fine.
-- **Logo:** a transparent PNG would remove the white box on the Welcome screen.
 
 ## Decisions already taken
 
@@ -127,7 +123,10 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 | PDF output | **Draw a new PDF** with the built-in `PdfDocument` (2026-11-09; the client left it to us). The screen and the PDF share the wording in `Waiver.kt`; no PdfBox. |
 | Flow | **One long scrolling screen** |
 | Initials | **Typed**, letters only, upper case, 1–4 |
-| Under 18 | A valid date of birth under 18 **switches to a parent/guardian signature** and requires the guardian's name |
+| Under 18 | A valid date of birth under 18 **switches to a parent/guardian signature** and requires the guardian's name. The **parent/guardian also does the initials** (client, 2026-11-09); the form intro and the guardian notice say so |
+| Email | **Optional** (client, 2026-11-09) |
+| Reason for visit | **Chips** (Adopting, Volunteering, Visiting, Dropping off, Other), required. OK with the client for now (2026-11-09); the paper form had a free-text line |
+| Logo | `res/drawable-nodpi/shfa_logo.png` is a **transparent** copy of `docs/client/logo.png` (white turned into transparency, black kept; made 2026-11-09) |
 | Sequence numbers | One counter that only goes up, never reset or reused; padded to 4 digits |
 | Room data | Search fields only; the street, "heard about", initials and signature are only in the PDF |
 | D1 framework | Kotlin + Jetpack Compose, Material 3 |
@@ -172,7 +171,8 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 
 ## Next steps (in order)
 
-1. **Check the items under "Check with the client"**, and confirm the commit can be pushed.
+1. **Confirm the waiver wording with the client**, and confirm the commits can be pushed (they put
+   the logo and the waiver wording in the public repo).
 2. **Phase 4: staff area.**
    - PIN (salted PBKDF2 hash in DataStore, 5-try lockout, auto-lock after 2 minutes); hidden entry
      by long-pressing the logo.

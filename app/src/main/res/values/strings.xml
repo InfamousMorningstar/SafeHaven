@@ -11,7 +11,7 @@
 
     <!-- Form. The legal wording of the waiver lives in Waiver.kt, not here. -->
     <string name="form_title">Liability waiver</string>
-    <string name="form_subtitle">Please fill in your details, read the waiver, initial each paragraph and sign at the bottom. Fields marked optional can be left blank.</string>
+    <string name="form_subtitle">Please fill in your details, read the waiver, initial each paragraph and sign at the bottom. If the visitor is under 18, a parent or guardian initials and signs. Fields marked optional can be left blank.</string>
     <string name="form_fix_errors">Please check the highlighted fields.</string>
     <string name="form_save_failed">Sorry, we couldn\'t save your waiver. Please let a staff member know.</string>
     <string name="form_cancel">Cancel</string>
@@ -43,7 +43,7 @@
     <string name="reason_dropping_off">Dropping off</string>
     <string name="reason_other">Other</string>
 
-    <string name="guardian_notice">Because the visitor is under 18, a parent or guardian must sign.</string>
+    <string name="guardian_notice">Because the visitor is under 18, a parent or guardian must initial each paragraph above and sign below.</string>
 
     <string name="signature_label">Signature</string>
     <string name="signature_label_guardian">Parent/Guardian signature</string>
