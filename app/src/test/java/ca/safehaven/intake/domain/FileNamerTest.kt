@@ -2,55 +2,32 @@ package ca.safehaven.intake.domain
 
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import kotlin.random.Random
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FileNamerTest {
-    private val at = ZonedDateTime.of(2026, 11, 4, 14, 32, 10, 0, ZoneId.of("America/Edmonton"))
+    private val phoenix = ZoneId.of("America/Phoenix")
+    private val at = ZonedDateTime.of(2026, 11, 9, 14, 32, 10, 0, phoenix)
 
-    @Test fun matchesPlanExample() {
-        assertEquals("2026-11-04_1432_Smith-Jane_K7QF.pdf", FileNamer.fileName(at, "Jane Smith", "K7QF"))
-        assertEquals("2026/11/2026-11-04_1432_Smith-Jane_K7QF.pdf", FileNamer.relativePath(at, "Jane Smith", "K7QF"))
-        assertEquals("K7QF-20261104-1432", FileNamer.recordCode(at, "K7QF"))
+    @Test fun dateAndSequentialNumber() {
+        assertEquals("2026-11-09_0001.pdf", FileNamer.fileName(at, 1))
+        assertEquals("2026/11/2026-11-09_0042.pdf", FileNamer.relativePath(at, 42))
+        assertEquals("0042", FileNamer.recordCode(42))
     }
 
-    @Test fun privacyModeLeavesNameOut() {
-        assertEquals("2026-11-04_1432_K7QF.pdf", FileNamer.fileName(at, null, "K7QF"))
+    @Test fun numberGrowsPastFourDigits() {
+        assertEquals("12345", FileNamer.recordCode(12_345))
+        assertEquals("2026-11-09_12345.pdf", FileNamer.fileName(at, 12_345))
     }
 
-    @Test fun slugTransliteratesAndStripsUnsafeCharacters() {
-        assertEquals("OBrien-Smith-Zoe", FileNamer.nameSlug("Zoë O'Brien-Smith"))
-        assertEquals("Nunez-Jose", FileNamer.nameSlug("José Núñez"))
-        assertEquals("Smith-Jane", FileNamer.nameSlug("Jane 😀 Smith"))
-        assertEquals("c-d-a-b", FileNamer.nameSlug("a/b\\ c:d*?\"<>|"))
-        assertEquals("Strasse", FileNamer.nameSlug("Straße"))
+    @Test(expected = IllegalArgumentException::class)
+    fun zeroIsNotASequenceNumber() {
+        FileNamer.recordCode(0)
     }
 
-    @Test fun nonLatinNamesFallBackToNoName() {
-        assertEquals("", FileNamer.nameSlug("王小明"))
-        assertEquals("2026-11-04_1432_K7QF.pdf", FileNamer.fileName(at, "王小明", "K7QF"))
-    }
-
-    @Test fun slugIsCappedWithoutTrailingDash() {
-        val slug = FileNamer.nameSlug("Bartholomew-Alexander Christopherson Montgomery-Wellington")
-        assertTrue(slug.length <= FileNamer.MAX_SLUG_LENGTH)
-        assertTrue(!slug.endsWith("-"))
-    }
-
-    @Test fun suffixUsesCrockfordAlphabet() {
-        val random = Random(42)
-        val suffixes = List(200) { FileNamer.randomSuffix(random) }
-        suffixes.forEach { assertTrue(it, Regex("^[0-9A-HJKMNP-TV-Z]{4}$").matches(it)) }
-        assertNotEquals(1, suffixes.toSet().size)
-    }
-
-    @Test fun usesLocalTimeAcrossDstChange() {
-        // 2026-11-01 is the MDT -> MST change in Alberta; 08:30 UTC is 01:30 MST after the switch.
-        val utc = ZonedDateTime.of(2026, 11, 1, 8, 30, 0, 0, ZoneId.of("UTC"))
-        val local = utc.withZoneSameInstant(ZoneId.of("America/Edmonton"))
-        assertEquals("2026-11-01_0130_K7QF.pdf", FileNamer.fileName(local, null, "K7QF"))
+    @Test fun usesArizonaLocalDate() {
+        // 05:30 UTC on 2026-11-10 is still 22:30 on 2026-11-09 in Phoenix (UTC-7, no DST).
+        val utc = ZonedDateTime.of(2026, 11, 10, 5, 30, 0, 0, ZoneId.of("UTC"))
+        assertEquals("2026-11-09_0007.pdf", FileNamer.fileName(utc.withZoneSameInstant(phoenix), 7))
     }
 }

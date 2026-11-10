@@ -13,35 +13,42 @@ import ca.safehaven.intake.domain.model.IntakeInput
 import ca.safehaven.intake.domain.validation.IntakeValidator
 import java.io.IOException
 import java.time.Clock
+import java.time.Instant
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.random.Random
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Validate, build the PDF, write it atomically, then index it in Room (plan 3.4).
- * If the database insert fails, the PDF is removed again so the two never disagree.
+ * Validate, reserve the next record number, build the PDF, write it atomically, then index it
+ * in Room (plan 3.4). If the database insert fails, the PDF is removed again so the two never
+ * disagree.
+ *
+ * @param reserveSequenceNumber returns the next number from the counter that only goes up
+ *   (`SequenceCounterDao.next`). A save that fails afterwards leaves a gap, never a repeat.
  */
 class SubmitIntakeUseCase(
     private val config: () -> IntakeConfig,
     private val pdfWriter: IntakePdfWriter,
     private val fileStore: IntakeFileStore,
     private val dao: SubmissionDao,
+    private val reserveSequenceNumber: suspend () -> Long,
     private val clock: Clock,
-    private val zone: ZoneId,
-    private val random: Random,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : IntakeSubmitter {
 
     override suspend fun submit(input: IntakeInput): SubmitResult = withContext(ioDispatcher) {
         val cfg = config()
-        val errors = IntakeValidator.validate(input, cfg)
+        val createdAt = clock.instant()
+        // The shelter's local time: it decides the date on the waiver, the under-18 rule and the file name.
+        val local = createdAt.atZone(ZoneId.of(cfg.timeZoneId))
+        val errors = IntakeValidator.validate(input, cfg, local.toLocalDate())
         if (errors.isNotEmpty()) return@withContext SubmitResult.Invalid(errors)
         try {
-            SubmitResult.Saved(save(input, cfg))
+            SubmitResult.Saved(save(input, cfg, createdAt, local))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -50,25 +57,26 @@ class SubmitIntakeUseCase(
         }
     }
 
-    private suspend fun save(input: IntakeInput, cfg: IntakeConfig): String {
-        val createdAt = clock.instant()
-        val local = createdAt.atZone(zone)
-        repeat(MAX_NAME_ATTEMPTS) {
-            val suffix = FileNamer.randomSuffix(random)
+    private suspend fun save(input: IntakeInput, cfg: IntakeConfig, createdAt: Instant, local: ZonedDateTime): String {
+        repeat(MAX_NUMBER_ATTEMPTS) {
+            val sequenceNumber = reserveSequenceNumber()
             val record = RecordFactory.create(
                 input = input,
                 config = cfg,
                 id = UUID.randomUUID().toString(),
-                recordCode = FileNamer.recordCode(local, suffix),
+                sequenceNumber = sequenceNumber,
                 createdAt = createdAt,
+                signedOn = local.toLocalDate(),
             )
-            val nameForFile = record.fullName.takeIf { cfg.includeNameInFileName }
-            val relativePath = FileNamer.relativePath(local, nameForFile, suffix)
+            val relativePath = FileNamer.relativePath(local, sequenceNumber)
 
             val written = try {
                 fileStore.writeAtomically(relativePath) { out -> pdfWriter.write(record, out) }
             } catch (e: FileAlreadyExistsException) {
-                return@repeat // Same name and suffix in the same minute: try another suffix.
+                // Can't happen with a counter that only goes up, unless the database was reset
+                // or restored while the PDFs stayed. Never overwrite a signed waiver: take the
+                // next number instead.
+                return@repeat
             }
 
             try {
@@ -79,10 +87,10 @@ class SubmitIntakeUseCase(
             }
             return record.recordCode
         }
-        throw IOException("Could not find a free file name")
+        throw IOException("Could not find a free record number")
     }
 
     private companion object {
-        const val MAX_NAME_ATTEMPTS = 5
+        const val MAX_NUMBER_ATTEMPTS = 5
     }
 }

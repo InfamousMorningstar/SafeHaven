@@ -10,10 +10,13 @@ import ca.safehaven.intake.domain.IntakeSubmitter
 import ca.safehaven.intake.domain.SubmitResult
 import ca.safehaven.intake.domain.model.IntakeConfig
 import ca.safehaven.intake.domain.model.IntakeInput
+import ca.safehaven.intake.domain.validation.DateOfBirthRules
 import ca.safehaven.intake.domain.validation.Field
 import ca.safehaven.intake.domain.validation.IntakeValidator
 import ca.safehaven.intake.domain.validation.NameRules
 import ca.safehaven.intake.domain.validation.ValidationError
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +38,8 @@ data class IntakeFormState(
     val submitAttempted: Boolean = false,
     val isSubmitting: Boolean = false,
     val saveFailed: Boolean = false,
+    /** True once a valid date of birth under the adult age is entered: a parent or guardian signs. */
+    val isMinor: Boolean = false,
 ) {
     /** Errors appear only once a field has lost focus, or after Submit (plan 3.3). */
     fun isTouched(field: Field): Boolean = submitAttempted || field in touched
@@ -60,6 +65,8 @@ class IntakeViewModel(
     val config: IntakeConfig,
     /** Monotonic milliseconds; replaced by virtual time in tests. */
     private val now: () -> Long = { System.nanoTime() / 1_000_000 },
+    /** The shelter's local date, for the date of birth and the under-18 rule. */
+    private val today: () -> LocalDate = { LocalDate.now(ZoneId.of(config.timeZoneId)) },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(IntakeUiState(VisitorScreen.Welcome, freshForm()))
@@ -79,11 +86,13 @@ class IntakeViewModel(
         _state.update { s ->
             if (s.screen != VisitorScreen.Form || s.form.isSubmitting) return@update s
             val input = transform(s.form.input)
+            val date = today()
             s.copy(
                 form = s.form.copy(
                     input = input,
-                    errors = IntakeValidator.validate(input, config),
+                    errors = IntakeValidator.validate(input, config, date),
                     saveFailed = false,
+                    isMinor = DateOfBirthRules.isMinor(input.dateOfBirth, date, config.adultAge),
                 ),
             )
         }
@@ -171,8 +180,8 @@ class IntakeViewModel(
     }
 
     private fun freshForm(): IntakeFormState {
-        val input = IntakeInput(city = config.defaultCity, province = config.defaultProvince)
-        return IntakeFormState(input = input, errors = IntakeValidator.validate(input, config))
+        val input = IntakeInput(city = config.defaultCity, state = config.defaultState)
+        return IntakeFormState(input = input, errors = IntakeValidator.validate(input, config, today()))
     }
 
     companion object {

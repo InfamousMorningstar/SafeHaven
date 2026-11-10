@@ -4,8 +4,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import ca.safehaven.intake.domain.validation.DateOfBirthRules
 import ca.safehaven.intake.domain.validation.PhoneRules
-import ca.safehaven.intake.domain.validation.PostalCodeRules
+import ca.safehaven.intake.domain.validation.ZipRules
 
 /**
  * Displays text through a formatter that only *inserts* characters (spaces, brackets, dashes),
@@ -46,7 +47,13 @@ class InsertingVisualTransformation(private val formatter: (String) -> String) :
     override fun hashCode() = formatter.hashCode()
 
     companion object {
+        /** `(602) 555-0123`. */
         val Phone = InsertingVisualTransformation(PhoneRules::formatPartial)
-        val PostalCode = InsertingVisualTransformation(PostalCodeRules::format)
+
+        /** `12345` or `12345-6789`. */
+        val Zip = InsertingVisualTransformation(ZipRules::format)
+
+        /** `MM/DD/YYYY`. */
+        val DateOfBirth = InsertingVisualTransformation(DateOfBirthRules::formatPartial)
     }
 }

@@ -1,9 +1,30 @@
 package ca.safehaven.intake.domain.validation
 
-import ca.safehaven.intake.domain.model.Province
+import ca.safehaven.intake.domain.model.Signature
+import ca.safehaven.intake.domain.model.WaiverClause
+import java.time.DateTimeException
+import java.time.LocalDate
+import java.time.Period
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-enum class Field { FULL_NAME, PHONE, STREET, UNIT, CITY, POSTAL_CODE, CONSENT }
+enum class Field {
+    FULL_NAME, STREET, CITY, ZIP, EMAIL, PHONE, REASON, HEARD_ABOUT, DATE_OF_BIRTH, GUARDIAN_NAME,
+    INITIALS_NO_MEDICATION, INITIALS_GOOD_HEALTH, INITIALS_NO_COMMUNICABLE_DISEASE,
+    INITIALS_INDEMNIFY, INITIALS_NO_NURSE, INITIALS_FACTS_TRUE,
+    SIGNATURE,
+}
+
+/** The form field holding the initials for this clause. */
+val WaiverClause.initialsField: Field
+    get() = when (this) {
+        WaiverClause.NO_MEDICATION -> Field.INITIALS_NO_MEDICATION
+        WaiverClause.GOOD_HEALTH -> Field.INITIALS_GOOD_HEALTH
+        WaiverClause.NO_COMMUNICABLE_DISEASE -> Field.INITIALS_NO_COMMUNICABLE_DISEASE
+        WaiverClause.INDEMNIFY -> Field.INITIALS_INDEMNIFY
+        WaiverClause.NO_NURSE -> Field.INITIALS_NO_NURSE
+        WaiverClause.FACTS_TRUE -> Field.INITIALS_FACTS_TRUE
+    }
 
 enum class ValidationError { REQUIRED, TOO_SHORT, TOO_LONG, INVALID }
 
@@ -53,11 +74,11 @@ object PhoneRules {
         }
     }
 
-    /** `+14035550123`, or null if invalid. */
+    /** `+16025550123`, or null if invalid. */
     fun toE164(raw: String): String? =
         NANP.matchEntire(digits(raw))?.groupValues?.let { "+1${it[1]}${it[2]}${it[3]}" }
 
-    /** `(403) 555-0123`, or null if invalid. */
+    /** `(602) 555-0123`, or null if invalid. */
     fun formatDisplay(raw: String): String? =
         NANP.matchEntire(digits(raw))?.groupValues?.let { "(${it[1]}) ${it[2]}-${it[3]}" }
 
@@ -84,34 +105,113 @@ object PhoneRules {
     }
 }
 
-object PostalCodeRules {
-    // No D, F, I, O, Q, U anywhere; no W or Z as the first letter.
-    private val PATTERN = Regex("^[ABCEGHJ-NPRSTVXY]\\d[ABCEGHJ-NPRSTV-Z]\\d[ABCEGHJ-NPRSTV-Z]\\d$")
-
-    fun normalize(raw: String): String =
-        raw.uppercase(Locale.ROOT).filter { it in 'A'..'Z' || it in '0'..'9' }
-
-    fun sanitizeInput(raw: String): String = normalize(raw).take(6)
+/** US ZIP or ZIP+4. The UI keeps digits only; the dash is display formatting. */
+object ZipRules {
+    fun sanitizeInput(raw: String): String = raw.filter { it in '0'..'9' }.take(9)
 
     fun validate(raw: String): ValidationError? {
-        val code = normalize(raw)
+        val d = sanitizeInput(raw)
         return when {
-            code.isEmpty() -> ValidationError.REQUIRED
-            !PATTERN.matches(code) -> ValidationError.INVALID
+            d.isEmpty() -> ValidationError.REQUIRED
+            d.length != 5 && d.length != 9 -> ValidationError.INVALID
             else -> null
         }
     }
 
-    /** `T2X1A1` -> `T2X 1A1`. Works on partial input too. */
+    /** `12345` -> `12345`, `123456789` -> `12345-6789`. Works on partial input too. */
     fun format(raw: String): String {
-        val code = normalize(raw)
-        return if (code.length > 3) code.substring(0, 3) + " " + code.substring(3) else code
+        val d = sanitizeInput(raw)
+        return if (d.length > 5) d.substring(0, 5) + "-" + d.substring(5) else d
+    }
+}
+
+/** Email is optional (not every visitor has one), but must look like an address if given. */
+object EmailRules {
+    const val MAX_LENGTH = 254
+    private val PATTERN = Regex("^[^\\s@]+@[^\\s@.]+(\\.[^\\s@.]+)*\\.[^\\s@.]{2,}$")
+
+    /** Spaces are never valid in an address, so they are dropped while typing. */
+    fun sanitizeInput(raw: String): String = raw.filterNot { it.isWhitespace() }
+
+    fun normalize(raw: String): String = sanitizeInput(raw)
+
+    fun validate(raw: String): ValidationError? {
+        val email = normalize(raw)
+        return when {
+            email.isEmpty() -> null
+            email.length > MAX_LENGTH -> ValidationError.TOO_LONG
+            !PATTERN.matches(email) -> ValidationError.INVALID
+            else -> null
+        }
+    }
+}
+
+/** Date of birth, typed as 8 digits `MMDDYYYY` and shown as `MM/DD/YYYY`. */
+object DateOfBirthRules {
+    const val MAX_AGE_YEARS = 120
+    private val DISPLAY = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.US)
+
+    fun sanitizeInput(raw: String): String = raw.filter { it in '0'..'9' }.take(8)
+
+    /** The date, or null when [raw] isn't 8 digits forming a real calendar date. */
+    fun parse(raw: String): LocalDate? {
+        val d = sanitizeInput(raw)
+        if (d.length != 8) return null
+        return try {
+            LocalDate.of(d.substring(4, 8).toInt(), d.substring(0, 2).toInt(), d.substring(2, 4).toInt())
+        } catch (e: DateTimeException) {
+            null
+        }
     }
 
-    /** Soft check only: true when we can't tell or the first letter fits the province. */
-    fun matchesProvince(raw: String, province: Province): Boolean {
-        val first = normalize(raw).firstOrNull() ?: return true
-        return first in province.postalPrefixes
+    fun validate(raw: String, today: LocalDate): ValidationError? {
+        if (sanitizeInput(raw).isEmpty()) return ValidationError.REQUIRED
+        val dob = parse(raw) ?: return ValidationError.INVALID
+        return when {
+            dob.isAfter(today) -> ValidationError.INVALID
+            dob.isBefore(today.minusYears(MAX_AGE_YEARS.toLong())) -> ValidationError.INVALID
+            else -> null
+        }
+    }
+
+    fun ageOn(dob: LocalDate, today: LocalDate): Int = Period.between(dob, today).years
+
+    /** False while the date is incomplete or invalid, so the guardian section only appears once it's real. */
+    fun isMinor(raw: String, today: LocalDate, adultAge: Int): Boolean {
+        if (validate(raw, today) != null) return false
+        return ageOn(checkNotNull(parse(raw)), today) < adultAge
+    }
+
+    /** Inserts slashes while typing: `0315` -> `03/15`, `03152010` -> `03/15/2010`. */
+    fun formatPartial(digits: String): String = buildString {
+        digits.forEachIndexed { i, c ->
+            if (i == 2 || i == 4) append('/')
+            append(c)
+        }
+    }
+
+    fun formatDisplay(date: LocalDate): String = DISPLAY.format(date)
+}
+
+/** Typed initials: letters only, upper case, 1 to 4 of them. */
+object InitialsRules {
+    const val MAX_LENGTH = 4
+
+    fun sanitizeInput(raw: String): String =
+        raw.filter { it.isLetter() }.uppercase(Locale.ROOT).take(MAX_LENGTH)
+
+    fun validate(raw: String?): ValidationError? =
+        if (sanitizeInput(raw.orEmpty()).isEmpty()) ValidationError.REQUIRED else null
+}
+
+object SignatureRules {
+    /** Fewer points than this is a tap or a dot, not a signature. */
+    const val MIN_POINTS = 10
+
+    fun validate(signature: Signature): ValidationError? = when {
+        signature.pointCount == 0 -> ValidationError.REQUIRED
+        signature.pointCount < MIN_POINTS -> ValidationError.TOO_SHORT
+        else -> null
     }
 }
 

@@ -1,7 +1,9 @@
 package ca.safehaven.intake.ui.intake
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -15,6 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,7 +29,15 @@ import ca.safehaven.intake.ui.theme.SafeHavenTheme
 @Composable
 fun WelcomeScreen(shelterName: String, onStart: () -> Unit) {
     CenteredColumn {
-        // TODO(client): shelter logo above the name. Long-press it for the staff PIN (phase 4).
+        // TODO(phase 4): long-press the logo for the staff PIN.
+        Image(
+            painter = painterResource(R.drawable.shfa_logo),
+            contentDescription = stringResource(R.string.shelter_logo_description),
+            contentScale = ContentScale.Fit,
+            // On a short screen the logo shrinks first, so the Start button keeps its full size.
+            modifier = Modifier.weight(1f, fill = false).heightIn(max = 128.dp),
+        )
+        Spacer(Modifier.height(24.dp))
         Text(shelterName, style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)
         Spacer(Modifier.height(16.dp))
         Text(
@@ -64,7 +76,7 @@ fun ThanksScreen(firstName: String, onDone: () -> Unit) {
 }
 
 @Composable
-private fun CenteredColumn(content: @Composable () -> Unit) {
+private fun CenteredColumn(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -74,7 +86,7 @@ private fun CenteredColumn(content: @Composable () -> Unit) {
 
 @Preview(widthDp = 1280, heightDp = 800)
 @Composable
-private fun WelcomePreview() = SafeHavenTheme { WelcomeScreen("Calgary Cat Shelter", onStart = {}) }
+private fun WelcomePreview() = SafeHavenTheme { WelcomeScreen("Safe Haven for Animals", onStart = {}) }
 
 @Preview(widthDp = 1280, heightDp = 800)
 @Composable

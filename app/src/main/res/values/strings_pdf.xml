@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Labels for the waiver PDF (AndroidIntakePdfWriter). Kept apart from strings.xml so the PDF and
+    the form screens can be reworded separately. The legal wording itself is in
+    domain/model/Waiver.kt, not here, so the screen and the PDF share one copy.
+-->
+<resources>
+    <string name="waiver_pdf_title">Liability Waiver</string>
+    <string name="waiver_pdf_record_label">Record No.</string>
+
+    <string name="waiver_pdf_section_contact">CONTACT INFORMATION</string>
+    <string name="waiver_pdf_name">Name</string>
+    <string name="waiver_pdf_street">Street Address</string>
+    <string name="waiver_pdf_city_state_zip">City, State, Zip Code</string>
+    <string name="waiver_pdf_email">E-mail</string>
+    <string name="waiver_pdf_mobile">Mobile</string>
+    <string name="waiver_pdf_reason">Reason for Visit</string>
+    <string name="waiver_pdf_heard_about">Where Did You Hear About Safe Haven</string>
+
+    <string name="waiver_pdf_reason_adopting">Adopting</string>
+    <string name="waiver_pdf_reason_volunteering">Volunteering</string>
+    <string name="waiver_pdf_reason_visiting">Visiting</string>
+    <string name="waiver_pdf_reason_dropping_off">Dropping off</string>
+    <string name="waiver_pdf_reason_other">Other</string>
+
+    <string name="waiver_pdf_col_clause">Please Read Carefully</string>
+    <string name="waiver_pdf_col_initials">Initials</string>
+
+    <string name="waiver_pdf_signature_adult">Signature of adult participant</string>
+    <string name="waiver_pdf_signature_guardian">Signature of parent/guardian: %1$s</string>
+    <string name="waiver_pdf_date_of_birth">Date of Birth</string>
+    <string name="waiver_pdf_date">Date</string>
+
+    <!-- Record, waiver version, device, app name, app version, created at -->
+    <string name="waiver_pdf_footer">Record %1$s · Waiver %2$s · Device %3$s · %4$s v%5$s · Created %6$s</string>
+    <string name="waiver_pdf_confidential">Confidential: contains personal information.</string>
+    <string name="waiver_pdf_page">Page %1$d of %2$d</string>
+</resources>
