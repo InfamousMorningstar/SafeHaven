@@ -19,8 +19,8 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
 ## Current state
 
 - **Git:** `github.com/InfamousMorningstar/SafeHaven`, a **public** repo, branch `main`. Session 3
-  is committed locally, **not pushed**. The commit adds the client's **logo** and the **waiver
-  wording** (`domain/model/Waiver.kt`) to the repo; confirm that's fine before pushing.
+  is **pushed** (2026-11-09), including the client's **logo** and the **waiver wording**
+  (`domain/model/Waiver.kt`).
 - **Toolchain:** Android Studio's bundled **JDK 25**. Gradle 9.1.0, AGP 8.13.0, Kotlin 2.2.21,
   KSP 2.3.13, Compose BOM 2025.08.00, Room 2.7.2.
 - **Client documents** are in `docs/client/`, which is **git-ignored on purpose because the repo
@@ -171,8 +171,7 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 
 ## Next steps (in order)
 
-1. **Confirm the waiver wording with the client**, and confirm the commits can be pushed (they put
-   the logo and the waiver wording in the public repo).
+1. **Confirm the waiver wording with the client** (`Waiver.kt` is now public on GitHub).
 2. **Phase 4: staff area.**
    - PIN (salted PBKDF2 hash in DataStore, 5-try lockout, auto-lock after 2 minutes); hidden entry
      by long-pressing the logo.
