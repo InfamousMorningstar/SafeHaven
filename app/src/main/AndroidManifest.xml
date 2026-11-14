@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Kiosk: lets the app bring itself back in front of Settings or Recents (MainActivity). -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
+
     <!--
       allowBackup=false + dataExtractionRules: visitor PDFs and the database must never be
       copied to a Google account or another device by Android's own backup/transfer.
@@ -55,6 +58,15 @@
                 android:resource="@xml/device_admin" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Restarts and re-pins the kiosk after an app update. Only the system sends this. -->
+        <receiver
+            android:name=".kiosk.AppUpdatedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 

@@ -30,9 +30,11 @@ const val STAFF_IDLE_TIMEOUT_MILLIS = 2 * 60_000L
 
 /**
  * When staff deliberately open another app (share sheet, folder picker, Settings), the idle timer
- * pauses. If they stay away longer than this, the staff area is locked when the app comes back.
+ * pauses. If they stay away longer than this, the staff area locks itself there and then, and
+ * MainActivity brings the app back to the front so the kiosk pins again: a tablet left in
+ * Settings doesn't stay open to visitors.
  */
-const val STAFF_MAX_AWAY_MILLIS = 10 * 60_000L
+const val STAFF_MAX_AWAY_MILLIS = 5 * 60_000L
 
 /**
  * Activity-scoped: the current [AppMode] and the staff auto-lock. MainActivity watches [mode] to
@@ -52,6 +54,7 @@ class StaffSessionViewModel(
 
     /** Non-null while staff are away in another app they opened on purpose. */
     private var awaySince: Long? = null
+    private var awayJob: Job? = null
 
     /** Long press on the Welcome logo. The caller resets the visitor form first. */
     fun enterStaff() {
@@ -72,6 +75,8 @@ class StaffSessionViewModel(
     fun exitStaff() {
         idleJob?.cancel()
         idleJob = null
+        awayJob?.cancel()
+        awayJob = null
         awaySince = null
         _mode.value = AppMode.VISITOR
     }
@@ -94,6 +99,11 @@ class StaffSessionViewModel(
                 idleJob?.cancel()
                 idleJob = null
                 awaySince = now()
+                awayJob?.cancel()
+                awayJob = viewModelScope.launch {
+                    delay(STAFF_MAX_AWAY_MILLIS)
+                    exitStaff()
+                }
             } else {
                 exitStaff()
             }
@@ -104,6 +114,8 @@ class StaffSessionViewModel(
     fun onActivityStarted() {
         val since = awaySince ?: return
         awaySince = null
+        awayJob?.cancel()
+        awayJob = null
         if (_mode.value != AppMode.STAFF) return
         if (now() - since > STAFF_MAX_AWAY_MILLIS) exitStaff() else startIdleWatch()
     }

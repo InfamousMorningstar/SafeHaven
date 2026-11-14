@@ -91,8 +91,8 @@ class StaffSessionViewModelTest {
         vm.enterStaff()
         vm.onPinAccepted()
         vm.onActivityStopped(deliberate = true)
-        // Five minutes in the folder picker: longer than the idle timeout, shorter than the away limit.
-        advanceTimeBy(5 * 60_000L)
+        // Four minutes in the folder picker: longer than the idle timeout, shorter than the away limit.
+        advanceTimeBy(4 * 60_000L)
         assertEquals(AppMode.STAFF, vm.mode.value)
 
         vm.onActivityStarted()
@@ -102,14 +102,34 @@ class StaffSessionViewModelTest {
         assertEquals(AppMode.VISITOR, vm.mode.value)
     }
 
-    @Test fun awayTooLongLocksOnReturn() = runTest(dispatcher) {
+    @Test fun awayTooLongLocksWithoutWaitingForTheReturn() = runTest(dispatcher) {
         val vm = viewModel()
         vm.enterStaff()
         vm.onPinAccepted()
         vm.onActivityStopped(deliberate = true)
-        advanceTimeBy(STAFF_MAX_AWAY_MILLIS + 1)
+        advanceTimeBy(STAFF_MAX_AWAY_MILLIS - 1_000)
+        assertEquals(AppMode.STAFF, vm.mode.value)
+        // Still in the other app: the staff area locks anyway.
+        advanceTimeBy(2_000)
+        assertEquals(AppMode.VISITOR, vm.mode.value)
+
         vm.onActivityStarted()
         assertEquals(AppMode.VISITOR, vm.mode.value)
+    }
+
+    @Test fun comingBackInTimeCancelsTheAwayLimit() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.enterStaff()
+        vm.onPinAccepted()
+        vm.onActivityStopped(deliberate = true)
+        advanceTimeBy(60_000L)
+        vm.onActivityStarted()
+        // Kept busy past the old away limit: only the idle timeout applies now.
+        repeat(8) {
+            advanceTimeBy(STAFF_IDLE_TIMEOUT_MILLIS / 2)
+            vm.onUserInteraction()
+        }
+        assertEquals(AppMode.STAFF, vm.mode.value)
     }
 
     @Test fun reenteringStartsAtThePinAgain() = runTest(dispatcher) {

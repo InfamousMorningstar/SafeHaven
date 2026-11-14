@@ -150,10 +150,15 @@ Reboot the tablet to check: it should go straight to the waiver Welcome screen.
   - **internal storage** (only protects against the app being deleted, not the tablet being lost).
 
   Then tap **Select** (or "Use this folder"). Afterwards, **Back up now** copies every waiver not
-  yet backed up.
+  yet backed up. If the picker stays open for more than 5 minutes, the waiver app comes back
+  and locks the staff area (see Maintenance below): enter the PIN and start again.
 - **Maintenance:** staff area → Maintenance → **Exit kiosk**. The app unpins and the status bar
   comes back, so staff can pull it down for quick settings and Settings (gear icon). The app is
   still the Home app, so Home brings it back. Go back to visitor mode to pin it again.
+  **Don't walk away while Settings (or any other app) is open:** the tablet is unpinned until
+  the waiver app is on screen again. Press Home before leaving it. As a safety net, after
+  5 minutes in another app the waiver app comes back by itself and pins; for longer maintenance,
+  enter the PIN and tap Exit kiosk again.
 
 ### Backup notes
 
@@ -183,6 +188,8 @@ Install the new APK over the old one:
 ```
 adb install -r app-release.apk
 ```
+
+The app restarts and pins itself a few seconds after the update.
 
 Device-owner status and all waivers are kept **as long as the new APK is signed with the same
 key**. A differently signed APK won't install over it, and uninstalling instead is blocked for a

@@ -14,17 +14,19 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
 - **Staff area, backup and kiosk are built** (sessions 4 and 5, committed 2026-11-14): PIN with
   lockout, records list/search, PDF viewer, share, delete, backup to a folder picked with
   Android's folder picker, device-owner kiosk (`KIOSK_SETUP.md`).
-- **120 unit tests** and **6 instrumented tests** pass on the Android 6.0 emulator that matches
+- **121 unit tests** and **6 instrumented tests** pass on the Android 6.0 emulator that matches
   the client's tablet, and `lint` reports no errors (2026-11-14).
-- Next: commit, then test on the **real tablet** with a **release build**. Nothing has run on
-  the LG G Pad yet. See "Next steps".
+- Next: test on the **real tablet** with a **release build**. Nothing has run on the LG G Pad
+  yet. See "Next steps".
 
 ## Current state
 
 - **Git:** `github.com/InfamousMorningstar/SafeHaven`, a **public** repo, branch `main`. Session 3
   is **pushed** (2026-11-09), including the client's **logo** and the **waiver wording**
   (`domain/model/Waiver.kt`). Sessions 4 and 5 (the staff area, backup, kiosk, the review fixes,
-  `KIOSK_SETUP.md`) are committed and pushed (2026-11-14).
+  `KIOSK_SETUP.md`) are committed and pushed (2026-11-14, `0c937d0`). The kiosk re-pin work
+  from the afternoon (`AppUpdatedReceiver`, `keepPinned`, `returnToFrontIfHidden`, the 5-minute
+  away limit) is committed and pushed after it (2026-11-14).
 - **Toolchain:** Android Studio's bundled **JDK 25**. Gradle 9.1.0, AGP 8.13.0, Kotlin 2.2.21,
   KSP 2.3.13, Compose BOM 2025.08.00, Room 2.7.2.
 - **Client documents** are in `docs/client/`, which is **git-ignored on purpose because the repo
@@ -141,23 +143,51 @@ Checked on `LG_GPad_X8_API23` (2026-11-14, debug build, the app is device owner 
 - A device-owner app restarts itself straight after `am force-stop`, because it is the Home app.
 - C: had only 2.9 GB free; the emulator still started.
 
+**Kiosk re-pin check (2026-11-14, afternoon).** The user had seen the kiosk stay unpinned
+after staff pressed Lock. On the emulator the app re-pinned (`mLockTaskModeState=LOCKED`) after
+every route back to the visitor screen: Lock, Back, Home, Recents then Home, screen off and on,
+the folder picker then Lock, and "Exit kiosk" (Settings) then Back or Home. Not reproduced.
+Two real weaknesses were found and fixed:
+
+- **After an app update** (`adb install -r`) Android killed the app and left the tablet on its
+  own launcher, unpinned, with Settings one tap away, until Home was pressed. The earlier
+  sessions redeployed often, so this is the likely cause of the report. `kiosk/AppUpdatedReceiver`
+  now restarts the app after an update; checked: it is pinned again within 5 s.
+- **A pin request was tried once and a refusal was ignored.** `MainActivity.keepPinned` now
+  re-checks while the visitor or PIN screen shows (after 0.3 s, backing off to every 5 s) and
+  pins again if needed. It could not be exercised: nothing outside the app can end the pin
+  (`am task lock stop` is refused), so this path has only been read, not seen working.
+
+- **The app now comes back by itself** (kiosk only, `MainActivity.returnToFrontIfHidden`):
+  - Staff in another app they opened (Settings, folder picker, share target) for more than
+    **5 minutes** (`STAFF_MAX_AWAY_MILLIS`, was 10 and only checked on return): the staff area
+    locks, the app returns to the front and pins. Checked: Settings left open was replaced by
+    the pinned Welcome screen between 4 min and 5 min 15 s.
+  - Staff leaving any other way (Recents): back in front and pinned within 2 s.
+  - It retries every 3 s, because Android 6 ignores an app's request to come forward for about
+    5 s after Home or Recents. A plain `startActivity` alone was not enough; it also calls
+    `moveTaskToFront` (hence the `REORDER_TASKS` permission).
+  - A 20 s folder-picker visit still returns to an open staff area.
+  - Limit: if Android kills the app's process while Settings is open, nothing brings it back
+    until Home is pressed. The window is then open to whoever is at the tablet.
+- 121 unit tests pass; lint is clean.
+
+**Re-checked the same day, after the afternoon changes** (fresh boot, `adb install -r` of the
+new build): pinned again within 1 s of the update; the staff home is `NONE`; **Lock** gives
+`LOCKED` within 0.5 s with no "Kiosk step failed" in logcat; Recents from the staff area brings
+the pinned Welcome screen back within 1 s; 121 unit tests, 6 instrumented tests and lint pass.
+The session 4 "Lock doesn't re-pin" report is closed. The emulator's staff PIN is now 1357.
+
 Still open:
 
-- **Check first: does Lock re-pin the kiosk?** In session 4 (device owner, debug build), the
-  emulator showed `mLockTaskModeState=LOCKED` on the PIN screen and `NONE` in the staff home, as
-  intended. But it still showed `NONE` 2 s after tapping **Lock**, when it should be `LOCKED`
-  again. Session 5 didn't change the lock code (`MainActivity.applyMode`,
-  `DeviceOwnerKioskController.lock`), and this wasn't re-tested before the 2026-11-14 commit
-  because the emulator wouldn't start (not enough disk space on C:). To check: device owner,
-  enter staff with the PIN, tap Lock, then `adb shell dumpsys activity activities | findstr
-  mLockTaskModeState`, and `adb logcat -s MainActivity` for "Kiosk step failed: lock". If it
-  stays `NONE`, a visitor could leave the app after staff lock up.
+- While the screen is off, `returnToFrontIfHidden` keeps waking every 3 s to check whether the
+  screen is on. Cheap, and the tablet is plugged in, but worth a look if battery is ever a concern.
 - Backup duplicates: a provider that reports no file size, or a half-written file left by a
   killed run, leads to a `name (1).pdf` copy. Left alone on purpose: deleting a same-named file
   in the backup folder could destroy a real waiver from an earlier install.
 - Rows whose PDF is missing still count as "pending" and have no marker in the records list
   (the viewer and the backup result do say so).
-- The PDF tests only count pages; nothing checks the text on them. 120 unit tests pass.
+- The PDF tests only count pages; nothing checks the text on them.
 
 ## Client requirements
 
@@ -200,7 +230,7 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 | D5 backup | **Copy to a folder staff pick with Android's folder picker** (SD card, USB stick, or Google Drive if the Drive app offers folders there). No Google Drive code in the app. Whether Drive shows up on the real tablet is **unknown**; the client prefers Drive |
 | D6 kiosk | Device Owner + Lock Task, **built** (`KIOSK_SETUP.md`). Checked on the emulator only |
 | Staff PIN | 4–8 digits, salted PBKDF2 hash in a private SharedPreferences file (not DataStore), 5 tries then a lockout that doubles up to 15 minutes. No default PIN. Reset only over USB (`PinResetReceiver`) |
-| Staff auto-lock | 2 minutes idle, or the app leaving the foreground. A running backup carries on |
+| Staff auto-lock | 2 minutes idle, or the app leaving the foreground. More than 5 minutes in another app opened from the staff area also locks, and the kiosk pulls the app back to the front. A running backup carries on |
 | Save order | PDF to `.tmp/`, then the Room row, then the rename. The row is what makes a save count |
 | D8 database | Room index + PDFs |
 | D9 SDK | minSdk 23, target/compileSdk 36, core library desugaring on |
@@ -232,7 +262,7 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 | PDF viewer and share | `ui/staff/WaiverViewerScreen.kt`, `PdfPages.kt`, `res/xml/file_paths.xml` |
 | Backup loop; folder-picker adapter; service | `data/backup/BackupRunner.kt`, `SafBackupFolder.kt`, `SafBackupService.kt` |
 | Backup and Maintenance screens | `ui/staff/BackupSection.kt`, `MaintenanceSection.kt` |
-| Kiosk (device owner, Lock Task) | `kiosk/`, `res/xml/device_admin.xml` |
+| Kiosk (device owner, Lock Task); restart after an update | `kiosk/`, `res/xml/device_admin.xml` |
 | Staff strings | `res/values/strings_staff.xml` |
 | Shared test data | `app/src/test/.../TestFixtures.kt`, `ui/staff/StaffFakes.kt` |
 | Device tests | `app/src/androidTest/` (PDF writer; save and search) |
@@ -247,8 +277,9 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
   visitors must scroll from outside it. Clear undoes a stray stroke. Watch for this in the pilot.
 - **Keyboard on the real tablet:** untested. Turn off prediction and learning in its settings.
 - Gradle prints deprecation warnings about Gradle 10. Harmless for now.
-- Dev PC: the emulator may not start if C: is nearly full. It did start with 2.9 GB free on
-  2026-11-14, using `-gpu swiftshader_indirect` (it crashed with hardware graphics in session 4).
+- Dev PC: the emulator refuses to start with about 1 GB free on C: ("not enough disk space").
+  It starts with 2.9 GB or more, using `-gpu swiftshader_indirect` (it crashed with hardware
+  graphics in session 4).
 - Command-line builds need `JAVA_HOME` set to Android Studio's JDK
   (`C:\Program Files\Android\Android Studio\jbr`); without it `gradlew` prints an error and
   does nothing.
@@ -256,8 +287,7 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 
 ## Next steps (in order)
 
-1. ~~Commit sessions 4 and 5~~ (committed and pushed 2026-11-14). **Free disk space on C:** so
-   the emulator starts, then re-check that **Lock re-pins the kiosk** (see "Still open").
+1. ~~Commit sessions 4 and 5; re-check that Lock re-pins~~ (done 2026-11-14).
 2. **Confirm the waiver wording with the client** (`Waiver.kt` is now public on GitHub), and ask
    whether "pick a Drive folder once, then tap Back up now" is what they expect.
 3. **By hand on the emulator:** a full visitor submission and a backup run with this build
