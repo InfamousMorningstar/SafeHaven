@@ -9,9 +9,10 @@ offline, and clears itself for the next person.
 > **Picking this up?** Read [`PROGRESS.md`](PROGRESS.md) first: what's done, what's next, the
 > decisions taken and the client's requirements.
 
-**Status:** the visitor waiver is built and tested on an Android 6.0 emulator that matches the
-target tablet (LG G Pad X 8.0). The staff area, cloud backup and kiosk lock are still to do (see
-below).
+**Status:** the visitor waiver, the PIN-protected staff area, backup to a chosen folder and the
+kiosk lock are built and tested on an Android 6.0 emulator that matches the target tablet (LG G
+Pad X 8.0). Nothing has run on the real tablet yet. Setting the tablet up as a kiosk is in
+[`KIOSK_SETUP.md`](KIOSK_SETUP.md).
 
 ## Build and run
 
@@ -28,10 +29,19 @@ Command line:
 
 ```
 gradlew test                 # JVM unit tests
-gradlew connectedAndroidTest # instrumented tests (needs a device/emulator)
+gradlew connectedAndroidTest # instrumented tests (needs a device/emulator; see the note below)
 gradlew lint                 # NewApi is an error: newer APIs must sit behind SDK_INT checks
 gradlew assembleRelease      # R8-minified release build
 ```
+
+`gradlew` needs `JAVA_HOME` to point at a JDK, for example Android Studio's own
+(`C:\Program Files\Android\Android Studio\jbr`).
+
+On an emulator where the app is the **device owner** (kiosk testing), don't use
+`connectedAndroidTest`: it tries to uninstall the app afterwards, which a device owner refuses.
+Build with `gradlew assembleDebug assembleDebugAndroidTest`, install both APKs with
+`adb install -r`, then run
+`adb shell am instrument -w ca.safehaven.intake.test/androidx.test.runner.AndroidJUnitRunner`.
 
 ### Release signing
 
@@ -65,13 +75,18 @@ reinstalling instead wipes all PDFs stored on the tablet.
 | File names `2026-11-09_0001.pdf` under `intake/YYYY/MM/`, from a counter that never repeats | `domain/FileNamer.kt`, `data/db/SequenceCounter.kt` |
 | Atomic writes (temp file, fsync, rename) + SHA-256 | `data/files/IntakeFileStore.kt` |
 | Room index of submissions (search fields only; the signature stays in the PDF) | `data/db/` |
-| Pipeline: validate → reserve number → PDF → file → DB row (removes the PDF if the DB insert fails) | `data/SubmitIntakeUseCase.kt` |
+| Pipeline: validate → reserve number → PDF in `.tmp/` → DB row → move the PDF into place. A save cut off part-way is finished or removed on the next start | `data/SubmitIntakeUseCase.kt`, `SafeHavenApp.kt` |
 | Arizona time (`America/Phoenix`, no DST) for dates, the under-18 rule and file names | `IntakeConfig` |
-| Backups off (`allowBackup=false`, data extraction rules) | `AndroidManifest.xml` |
+| Android's own backups off (`allowBackup=false`, data extraction rules) | `AndroidManifest.xml` |
+| Staff area behind a PIN (long-press the logo): salted PBKDF2 hash, lockout after 5 wrong tries, auto-lock after 2 idle minutes, no screenshots | `data/staff/`, `ui/staff/`, `MainActivity.kt` |
+| Records list and search, PDF viewer, share one PDF, delete | `ui/staff/RecordsSection.kt`, `WaiverViewerScreen.kt` |
+| Backup: copies PDFs not yet backed up to a folder picked with Android's folder picker (SD card, USB stick, or Google Drive if the Drive app offers folders) | `data/backup/`, `ui/staff/BackupSection.kt` |
+| Kiosk: device owner, Lock Task, Home app, starts on boot | `kiosk/`, [`KIOSK_SETUP.md`](KIOSK_SETUP.md) |
+| Forgotten-PIN reset from a PC over USB | `staff/PinResetReceiver.kt` |
 
 Settings the client may want to change (timeouts, adult age, default state, device label) are in
-`IntakeConfig` (`domain/model/IntakeModels.kt`). They're hard-coded until the staff Settings
-screen exists. If the client changes the waiver wording, update `Waiver.kt` and bump
+`IntakeConfig` (`domain/model/IntakeModels.kt`). They're hard-coded; there is no staff Settings
+screen. If the client changes the waiver wording, update `Waiver.kt` and bump
 `Waiver.VERSION`, which is printed on every PDF.
 
 ### Deviations from the plan
@@ -84,12 +99,10 @@ screen exists. If the client changes the waiver wording, update `Waiver.kt` and 
 
 ## Still to do
 
-- **Phase 4: staff area.** PIN (salted hash in DataStore), records list and search, `PdfRenderer`
-  viewer, share/export (SAF + `FileProvider`), delete, settings, `FLAG_SECURE`. No printing and
-  no automatic deletion, per the client.
-- **Backups** to Google Drive or another cloud service.
-- **Phase 5: kiosk.** `DeviceAdminReceiver`, `dpm set-device-owner` provisioning, Lock Task,
-  persistent HOME activity, user restrictions, maintenance exit.
+- **Testing on the real tablet** with a release build (see below). Nothing has run on it yet.
+- **Google Drive:** the app has no Drive code of its own. If Drive doesn't appear in the
+  tablet's folder picker, backups go to an SD card or USB stick, or Drive upload has to be built.
+- **A staff Settings screen** for the values in `IntakeConfig`.
 - **Hardening:** baseline profile, encryption decision, accessibility pass.
 - **Later:** more forms (pre-adoption questionnaire, adoption contract).
 
@@ -101,5 +114,8 @@ These can't be checked on an emulator:
 - The LG keyboard shows no suggestions from a previous visitor. Also turn off prediction and
   learning in the keyboard's own settings.
 - Signing with a finger on the real screen.
+- Every step of [`KIOSK_SETUP.md`](KIOSK_SETUP.md), and whether Google Drive appears in the
+  folder picker.
+- The PDF viewer's page scaling, and how long the PIN check takes.
 - Cold start, typing lag and PDF time on the Snapdragon 617 with 2 GB RAM, using a **release**
   build.

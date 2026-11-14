@@ -22,9 +22,14 @@
           Landscape is locked for the LG G Pad X (Android 6/7). Android 16+ ignores this on
           large screens, so the layout also works in portrait.
         -->
+        <!--
+          singleTask: as the kiosk's Home screen (KIOSK_SETUP.md), pressing Home or rebooting must
+          return to this one instance, never stack a second copy.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:screenOrientation="sensorLandscape"
             android:windowSoftInputMode="adjustResize"
             tools:ignore="DiscouragedApi,LockedOrientationActivity">
@@ -32,7 +37,50 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Lets the device owner make this the Home app, so it starts on boot. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
+
+        <!-- Device-owner kiosk component (KIOSK_SETUP.md). -->
+        <receiver
+            android:name=".kiosk.KioskAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Forgotten staff PIN (KIOSK_SETUP.md). Exported so `adb shell am broadcast` reaches it,
+          but only for senders holding DUMP: the system and the adb shell, never an ordinary app.
+        -->
+        <receiver
+            android:name=".staff.PinResetReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="ca.safehaven.intake.RESET_STAFF_PIN" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Staff share one waiver PDF at a time (e.g. to email or Drive). Not exported. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

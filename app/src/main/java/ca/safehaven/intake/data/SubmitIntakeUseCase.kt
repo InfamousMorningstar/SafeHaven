@@ -20,12 +20,15 @@ import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 /**
- * Validate, reserve the next record number, build the PDF, write it atomically, then index it
- * in Room (plan 3.4). If the database insert fails, the PDF is removed again so the two never
- * disagree.
+ * Validate, reserve the next record number, build the PDF, then save it with its Room row
+ * (plan 3.4). The order is: PDF written and on disk in `.tmp/`, row inserted, PDF moved into
+ * place. The row is what makes the save count. If the insert fails, the PDF is removed; if the
+ * app dies before the move, `IntakeFileStore.recoverTemp` finishes it on the next start. So a
+ * PDF never exists without its row.
  *
  * @param reserveSequenceNumber returns the next number from the counter that only goes up
  *   (`SequenceCounterDao.next`). A save that fails afterwards leaves a gap, never a repeat.
@@ -48,7 +51,10 @@ class SubmitIntakeUseCase(
         val errors = IntakeValidator.validate(input, cfg, local.toLocalDate())
         if (errors.isNotEmpty()) return@withContext SubmitResult.Invalid(errors)
         try {
-            SubmitResult.Saved(save(input, cfg, createdAt, local))
+            // Not cancellable: once a number is reserved, the PDF and its row are both written or
+            // both absent. A cancel landing between the two (the screen going away mid-save)
+            // could otherwise delete the PDF of a row that Room had already committed.
+            SubmitResult.Saved(withContext(NonCancellable) { save(input, cfg, createdAt, local) })
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -70,8 +76,8 @@ class SubmitIntakeUseCase(
             )
             val relativePath = FileNamer.relativePath(local, sequenceNumber)
 
-            val written = try {
-                fileStore.writeAtomically(relativePath) { out -> pdfWriter.write(record, out) }
+            val prepared = try {
+                fileStore.prepare(relativePath) { out -> pdfWriter.write(record, out) }
             } catch (e: FileAlreadyExistsException) {
                 // Can't happen with a counter that only goes up, unless the database was reset
                 // or restored while the PDFs stayed. Never overwrite a signed waiver: take the
@@ -80,9 +86,22 @@ class SubmitIntakeUseCase(
             }
 
             try {
-                dao.insert(record.toEntity(relativePath, written.sha256))
+                dao.insert(record.toEntity(relativePath, prepared.sha256))
             } catch (e: Throwable) {
-                fileStore.delete(relativePath)
+                prepared.discard()
+                throw e
+            }
+            try {
+                prepared.commit()
+            } catch (e: Exception) {
+                // The PDF couldn't be moved into place: take the row back so the two agree.
+                try {
+                    dao.deleteById(record.id)
+                } catch (ignored: Exception) {
+                    // The row stays; the next start moves the PDF into place for it.
+                    throw e
+                }
+                prepared.discard()
                 throw e
             }
             return record.recordCode

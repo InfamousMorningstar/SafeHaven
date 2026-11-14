@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Device-owner kiosk (KIOSK_SETUP.md). No admin policies are needed beyond being device owner. -->
+<device-admin>
+    <uses-policies />
+</device-admin>

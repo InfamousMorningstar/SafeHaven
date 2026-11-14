@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider: only the waiver PDFs can be shared, and only by staff (one file at a time). -->
+<paths>
+    <files-path name="waivers" path="intake/" />
+</paths>

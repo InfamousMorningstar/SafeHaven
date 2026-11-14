@@ -3,11 +3,17 @@ package ca.safehaven.intake
 import android.content.Context
 import androidx.room.Room
 import ca.safehaven.intake.data.SubmitIntakeUseCase
+import ca.safehaven.intake.data.backup.SafBackupService
 import ca.safehaven.intake.data.db.AppDatabase
 import ca.safehaven.intake.data.files.IntakeFileStore
 import ca.safehaven.intake.data.pdf.AndroidIntakePdfWriter
+import ca.safehaven.intake.data.staff.SharedPrefsPinStore
 import ca.safehaven.intake.domain.IntakeSubmitter
 import ca.safehaven.intake.domain.model.IntakeConfig
+import ca.safehaven.intake.kiosk.DeviceOwnerKioskController
+import ca.safehaven.intake.staff.BackupService
+import ca.safehaven.intake.staff.KioskController
+import ca.safehaven.intake.staff.PinStore
 import java.io.File
 import java.time.Clock
 
@@ -16,13 +22,14 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
 
     val config = IntakeConfig()
+    val clock: Clock = Clock.systemUTC()
 
     val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "safehaven.db")
-            // Version 1 (the Canadian sign-in scaffold) only ever existed on a developer
-            // emulator and was never released, so there is nothing to keep: drop it rather than
-            // write a migration. Only version 1 is listed, so any later schema change without a
-            // Migration fails loudly instead of silently wiping visitors' waivers.
+            // Version 1 was the Canadian sign-in scaffold and only ever existed on a developer
+            // emulator (never on the shelter's tablet), so it's dropped instead of migrated.
+            // From version 2 on, every schema change needs a real Migration: there are signed
+            // waivers on the tablet.
             .fallbackToDestructiveMigrationFrom(true, 1)
             .build()
     }
@@ -42,7 +49,20 @@ class AppContainer(context: Context) {
             fileStore = fileStore,
             dao = database.submissionDao(),
             reserveSequenceNumber = database.sequenceCounterDao()::next,
-            clock = Clock.systemUTC(),
+            clock = clock,
         )
     }
+
+    // --- Staff area (phase 4), backup and kiosk (phase 5) ---
+
+    val pinStore: PinStore by lazy { SharedPrefsPinStore(appContext, clock) }
+
+    val backupService: BackupService by lazy {
+        SafBackupService(appContext, database.submissionDao(), fileStore, clock)
+    }
+
+    val kiosk: KioskController by lazy { DeviceOwnerKioskController(appContext) }
+
+    /** FileProvider authority declared in the manifest. */
+    val fileProviderAuthority: String = "${appContext.packageName}.files"
 }

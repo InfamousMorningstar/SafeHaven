@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Staff area (plan phase 4): PIN, records, viewer, backup, maintenance. -->
+<resources>
+    <string name="staff_title">Staff</string>
+    <string name="staff_lock">Lock</string>
+    <string name="staff_section_records">Records</string>
+    <string name="staff_section_backup">Backup</string>
+    <string name="staff_section_maintenance">Maintenance</string>
+    <string name="staff_loading">Loading…</string>
+
+    <!-- PIN -->
+    <string name="staff_pin_enter_title">Staff PIN</string>
+    <string name="staff_pin_enter_message">Enter the staff PIN.</string>
+    <string name="staff_pin_create_title">Create a staff PIN</string>
+    <string name="staff_pin_create_message">Choose a PIN of 4 to 8 digits. Staff will need it to open this area.</string>
+    <string name="staff_pin_confirm_message">Enter the same PIN again.</string>
+    <string name="staff_pin_change_title">Change PIN</string>
+    <string name="staff_pin_change_current_message">Enter the current PIN.</string>
+    <string name="staff_pin_change_new_message">Enter a new PIN of 4 to 8 digits.</string>
+    <string name="staff_pin_change_confirm_message">Enter the new PIN again.</string>
+    <string name="staff_pin_busy">Please wait…</string>
+    <plurals name="staff_pin_wrong">
+        <item quantity="one">Wrong PIN, %d try left.</item>
+        <item quantity="other">Wrong PIN, %d tries left.</item>
+    </plurals>
+    <string name="staff_pin_locked_out">Too many wrong tries. Try again in %1$s.</string>
+    <string name="staff_pin_mismatch">The two PINs didn\'t match. Please start again.</string>
+    <string name="staff_pin_error">Something went wrong. Please try again.</string>
+    <string name="staff_pin_ok">OK</string>
+    <string name="staff_pin_backspace">Delete</string>
+    <string name="staff_pin_cancel">Cancel</string>
+    <string name="staff_pin_changed">The PIN has been changed.</string>
+    <plurals name="staff_pin_dots_description">
+        <item quantity="one">%d digit entered</item>
+        <item quantity="other">%d digits entered</item>
+    </plurals>
+
+    <!-- Records -->
+    <string name="staff_records_title">Saved waivers</string>
+    <string name="staff_records_search">Search name, guardian, email, record number or phone</string>
+    <string name="staff_records_clear">Clear</string>
+    <plurals name="staff_records_count">
+        <item quantity="one">%d waiver</item>
+        <item quantity="other">%d waivers</item>
+    </plurals>
+    <string name="staff_records_empty">No waivers have been saved yet.</string>
+    <string name="staff_records_no_match">No waivers match your search.</string>
+    <string name="staff_record_heading">%1$s · Signed %2$s</string>
+    <string name="staff_record_minor">%1$s (minor, guardian: %2$s)</string>
+    <string name="staff_record_place">%1$s, %2$s</string>
+    <string name="staff_record_backed_up">Backed up</string>
+    <string name="staff_record_not_backed_up">Not backed up</string>
+    <string name="staff_record_deleted">Waiver %1$s was deleted.</string>
+    <string name="staff_record_delete_failed">Couldn\'t delete the waiver. Please try again.</string>
+    <string name="staff_record_file_missing">The PDF for this waiver is missing.</string>
+
+    <!-- Viewer -->
+    <string name="staff_viewer_back">Back to list</string>
+    <string name="staff_viewer_title">Waiver %1$s</string>
+    <string name="staff_viewer_share">Share</string>
+    <string name="staff_viewer_delete">Delete</string>
+    <string name="staff_viewer_share_title">Share waiver PDF</string>
+    <string name="staff_viewer_share_subject">Waiver %1$s</string>
+    <string name="staff_viewer_page">Page %1$d of %2$d</string>
+    <string name="staff_viewer_open_failed">Couldn\'t open this PDF.</string>
+    <string name="staff_viewer_page_failed">Couldn\'t show this page.</string>
+    <string name="staff_viewer_no_share_app">No app on this tablet can share PDFs.</string>
+    <string name="staff_delete_title">Delete waiver %1$s?</string>
+    <string name="staff_delete_message">This deletes the signed PDF and its record from this tablet. It can\'t be undone, and the record number is never reused. If you might need it later, back it up first.</string>
+    <string name="staff_delete_not_backed_up">Warning: this waiver has NOT been backed up. Once deleted, there is no copy anywhere.</string>
+    <string name="staff_delete_confirm">Delete</string>
+    <string name="staff_delete_cancel">Keep it</string>
+
+    <!-- Backup -->
+    <string name="staff_backup_title">Backup</string>
+    <string name="staff_backup_folder">Backup folder: %1$s</string>
+    <string name="staff_backup_no_folder">No backup folder chosen</string>
+    <plurals name="staff_backup_pending">
+        <item quantity="one">%d waiver not backed up</item>
+        <item quantity="other">%d waivers not backed up</item>
+    </plurals>
+    <string name="staff_backup_all_done">All waivers are backed up.</string>
+    <string name="staff_backup_last">Last backup: %1$s</string>
+    <string name="staff_backup_never">Last backup: never</string>
+    <string name="staff_backup_choose">Choose folder…</string>
+    <string name="staff_backup_choose_hint">Pick a folder on Google Drive, an SD card or a USB stick.</string>
+    <string name="staff_backup_now">Back up now</string>
+    <string name="staff_backup_running">Backing up…</string>
+    <plurals name="staff_backup_done">
+        <item quantity="one">Backed up %d waiver.</item>
+        <item quantity="other">Backed up %d waivers.</item>
+    </plurals>
+    <plurals name="staff_backup_missing">
+        <item quantity="one">%d waiver has no PDF on this tablet and can\'t be backed up. Search the records for the one whose PDF is missing.</item>
+        <item quantity="other">%d waivers have no PDF on this tablet and can\'t be backed up. Search the records for the ones whose PDF is missing.</item>
+    </plurals>
+    <string name="staff_backup_nothing_new">Nothing new to back up.</string>
+    <string name="staff_backup_result_no_folder">Choose a backup folder first.</string>
+    <string name="staff_backup_unavailable">Can\'t reach the backup folder. Choose it again.</string>
+    <string name="staff_backup_failed">Backed up %1$d; the rest will be retried.</string>
+    <string name="staff_backup_folder_failed">Couldn\'t use that folder. Please choose it again.</string>
+    <string name="staff_backup_no_picker">This tablet can\'t open the folder picker.</string>
+
+    <!-- Maintenance -->
+    <string name="staff_maint_pin_title">Staff PIN</string>
+    <string name="staff_maint_change_pin">Change PIN</string>
+    <string name="staff_maint_kiosk_title">Kiosk mode</string>
+    <string name="staff_maint_kiosk_on">Kiosk mode is on: visitors can\'t leave this app.</string>
+    <string name="staff_maint_kiosk_exit">Exit kiosk for maintenance</string>
+    <string name="staff_maint_kiosk_exit_hint">Opens Android Settings. Kiosk mode comes back when you lock the staff area.</string>
+    <string name="staff_maint_kiosk_off">Kiosk mode is off because this app isn\'t the device owner. See KIOSK_SETUP.md to set it up.</string>
+    <string name="staff_maint_about_title">About</string>
+    <string name="staff_maint_version">App version: %1$s</string>
+    <string name="staff_maint_device">Device: %1$s</string>
+    <string name="staff_maint_count">Saved waivers: %1$d</string>
+    <string name="staff_maint_count_loading">Saved waivers: …</string>
+</resources>

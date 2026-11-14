@@ -1,6 +1,7 @@
 package ca.safehaven.intake.ui.intake
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -15,8 +16,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -26,16 +30,21 @@ import androidx.compose.ui.unit.dp
 import ca.safehaven.intake.R
 import ca.safehaven.intake.ui.theme.SafeHavenTheme
 
+/** @param onLogoLongPress hidden staff entry: a long press on the logo. No visible hint. */
 @Composable
-fun WelcomeScreen(shelterName: String, onStart: () -> Unit) {
+fun WelcomeScreen(shelterName: String, onStart: () -> Unit, onLogoLongPress: () -> Unit = {}) {
+    val longPress by rememberUpdatedState(onLogoLongPress)
     CenteredColumn {
-        // TODO(phase 4): long-press the logo for the staff PIN.
         Image(
             painter = painterResource(R.drawable.shfa_logo),
             contentDescription = stringResource(R.string.shelter_logo_description),
             contentScale = ContentScale.Fit,
             // On a short screen the logo shrinks first, so the Start button keeps its full size.
-            modifier = Modifier.weight(1f, fill = false).heightIn(max = 128.dp),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .heightIn(max = 128.dp)
+                // No ripple, no click semantics: nothing tells a visitor the logo does anything.
+                .pointerInput(Unit) { detectTapGestures(onLongPress = { longPress() }) },
         )
         Spacer(Modifier.height(24.dp))
         Text(shelterName, style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)

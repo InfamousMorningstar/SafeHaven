@@ -24,8 +24,12 @@ import ca.safehaven.intake.ui.intake.ThanksScreen
 import ca.safehaven.intake.ui.intake.VisitorScreen
 import ca.safehaven.intake.ui.intake.WelcomeScreen
 
+/**
+ * @param onStaffRequested long press on the Welcome logo (hidden staff entry). Only the Welcome
+ *   screen offers it, never a form in progress.
+ */
 @Composable
-fun VisitorApp(viewModel: IntakeViewModel, shelterName: String) {
+fun VisitorApp(viewModel: IntakeViewModel, shelterName: String, onStaffRequested: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     // There is no "back" for visitors: it must never lead to a previous visitor's form.
@@ -40,7 +44,11 @@ fun VisitorApp(viewModel: IntakeViewModel, shelterName: String) {
             color = MaterialTheme.colorScheme.background,
         ) {
             when (val screen = state.screen) {
-                VisitorScreen.Welcome -> WelcomeScreen(shelterName = shelterName, onStart = viewModel::start)
+                VisitorScreen.Welcome -> WelcomeScreen(
+                    shelterName = shelterName,
+                    onStart = viewModel::start,
+                    onLogoLongPress = onStaffRequested,
+                )
                 VisitorScreen.Form -> IntakeFormScreen(
                     form = state.form,
                     config = viewModel.config,
@@ -64,8 +72,8 @@ fun VisitorApp(viewModel: IntakeViewModel, shelterName: String) {
     }
 }
 
-/** Sees every touch (without consuming it) so the inactivity timer can restart. */
-private fun Modifier.recordInteractions(onInteraction: () -> Unit): Modifier = this.then(
+/** Sees every touch (without consuming it) so the inactivity timer can restart. Also used by the staff area. */
+internal fun Modifier.recordInteractions(onInteraction: () -> Unit): Modifier = this.then(
     Modifier.pointerInput(Unit) {
         awaitPointerEventScope {
             while (true) {

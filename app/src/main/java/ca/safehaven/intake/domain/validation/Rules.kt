@@ -208,10 +208,24 @@ object SignatureRules {
     /** Fewer points than this is a tap or a dot, not a signature. */
     const val MIN_POINTS = 10
 
+    /** The ink must span at least this share of the pad's width, or [MIN_HEIGHT_FRACTION] of its height. */
+    const val MIN_WIDTH_FRACTION = 0.08f
+    const val MIN_HEIGHT_FRACTION = 0.3f
+
     fun validate(signature: Signature): ValidationError? = when {
         signature.pointCount == 0 -> ValidationError.REQUIRED
         signature.pointCount < MIN_POINTS -> ValidationError.TOO_SHORT
+        isTiny(signature) -> ValidationError.TOO_SHORT
         else -> null
+    }
+
+    /** A small scribble can have many points and still print as a dot on the PDF. */
+    private fun isTiny(signature: Signature): Boolean {
+        if (signature.width <= 0f || signature.height <= 0f) return false
+        val points = signature.strokes.flatten()
+        val spanX = points.maxOf { it.x } - points.minOf { it.x }
+        val spanY = points.maxOf { it.y } - points.minOf { it.y }
+        return spanX < signature.width * MIN_WIDTH_FRACTION && spanY < signature.height * MIN_HEIGHT_FRACTION
     }
 }
 

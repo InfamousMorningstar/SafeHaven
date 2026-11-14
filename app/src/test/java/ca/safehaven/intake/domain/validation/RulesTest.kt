@@ -168,6 +168,9 @@ class SignatureRulesTest {
         assertEquals(ValidationError.REQUIRED, SignatureRules.validate(Signature.EMPTY))
         val dot = Signature(600f, 200f, listOf(listOf(SignaturePoint(1f, 1f), SignaturePoint(2f, 2f))))
         assertEquals(ValidationError.TOO_SHORT, SignatureRules.validate(dot))
+        // Plenty of points, but all inside a 14 px corner of a 600 px pad.
+        val scribble = Signature(600f, 200f, listOf(List(30) { i -> SignaturePoint(100f + i % 15, 50f + i % 7) }))
+        assertEquals(ValidationError.TOO_SHORT, SignatureRules.validate(scribble))
         assertNull(SignatureRules.validate(TestFixtures.SIGNATURE))
     }
 }

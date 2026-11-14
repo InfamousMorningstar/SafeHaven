@@ -45,7 +45,19 @@ class SubmitIntakeUseCaseTest {
             rows += submission
         }
         override fun observeAll(): Flow<List<SubmissionEntity>> = emptyFlow()
+        override fun observeCount(): Flow<Int> = emptyFlow()
+        override suspend fun countByPdfPath(pdfPath: String) = rows.count { it.pdfPath == pdfPath }
+        override suspend fun markAllPendingBackup() = Unit
         override suspend fun getById(id: String) = rows.find { it.id == id }
+
+        // Staff and backup queries: not used by the submit pipeline.
+        override fun search(query: String, digits: String): Flow<List<SubmissionEntity>> = emptyFlow()
+        override suspend fun deleteById(id: String) = if (rows.removeAll { it.id == id }) 1 else 0
+        override suspend fun pendingBackup() = emptyList<SubmissionEntity>()
+        override fun observePendingBackupCount(): Flow<Int> = emptyFlow()
+        override fun observeLastBackupAt(): Flow<Instant?> = emptyFlow()
+        override suspend fun markBackedUp(id: String, at: Instant) = Unit
+        override suspend fun markExported(id: String, at: Instant) = Unit
     }
 
     /** Stands in for SequenceCounterDao: only goes up, even when a save fails. */
