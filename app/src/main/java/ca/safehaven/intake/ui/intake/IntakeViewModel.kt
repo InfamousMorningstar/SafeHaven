@@ -1,5 +1,6 @@
 package ca.safehaven.intake.ui.intake
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -63,8 +64,11 @@ data class IntakeUiState(
 class IntakeViewModel(
     private val submitter: IntakeSubmitter,
     val config: IntakeConfig,
-    /** Monotonic milliseconds; replaced by virtual time in tests. */
-    private val now: () -> Long = { System.nanoTime() / 1_000_000 },
+    /**
+     * Milliseconds that keep counting while the tablet sleeps (unlike `System.nanoTime`), so a
+     * form left behind a switched-off screen still times out. Replaced by virtual time in tests.
+     */
+    private val now: () -> Long = { SystemClock.elapsedRealtime() },
     /** The shelter's local date, for the date of birth and the under-18 rule. */
     private val today: () -> LocalDate = { LocalDate.now(ZoneId.of(config.timeZoneId)) },
 ) : ViewModel() {
@@ -112,6 +116,19 @@ class IntakeViewModel(
             _state.update { it.copy(stillThereSeconds = null) }
             startIdleWatch()
         }
+    }
+
+    /**
+     * The app is on screen again (the screen was switched back on, or another app closed).
+     * Coroutine timers stand still while the tablet sleeps, so the idle timer alone would leave
+     * a half-filled form waiting for whoever wakes the tablet. If the visitor has been gone
+     * longer than the idle timeout plus the countdown, wipe the form now.
+     */
+    fun onShownAgain() {
+        val current = _state.value
+        if (current.screen != VisitorScreen.Form || current.form.isSubmitting) return
+        val allowed = config.idleTimeoutMillis + config.stillThereSeconds * 1_000L
+        if (now() - lastInteractionAt >= allowed) reset()
     }
 
     fun submit() {

@@ -70,6 +70,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Restarts the kiosk if Android killed the app while another screen was showing. -->
+        <receiver
+            android:name=".kiosk.KioskWatchdogReceiver"
+            android:exported="false" />
+
         <!--
           Forgotten staff PIN (KIOSK_SETUP.md). Exported so `adb shell am broadcast` reaches it,
           but only for senders holding DUMP: the system and the adb shell, never an ordinary app.

@@ -1,6 +1,6 @@
 # SafeHaven: progress and handoff
 
-Last updated: 2026-11-14 (end of session 5). Read this first when resuming work.
+Last updated: 2026-11-14 (end of session 6, the attack pass). Read this first when resuming work.
 
 **Design source:** `D:\Obsidian\Nebula\Projects\App Idea - Technical Plan.md`. Section numbers
 below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](README.md).
@@ -14,8 +14,11 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
 - **Staff area, backup and kiosk are built** (sessions 4 and 5, committed 2026-11-14): PIN with
   lockout, records list/search, PDF viewer, share, delete, backup to a folder picked with
   Android's folder picker, device-owner kiosk (`KIOSK_SETUP.md`).
-- **121 unit tests** and **6 instrumented tests** pass on the Android 6.0 emulator that matches
-  the client's tablet, and `lint` reports no errors (2026-11-14).
+- **123 unit tests** pass and `lint` reports no errors (2026-11-14, session 6). The
+  **6 instrumented tests** last ran before session 6, on the Android 6.0 emulator that matches
+  the client's tablet; session 6 didn't change the code they cover.
+- Session 6 attacked the app on the emulator (see the session log) and fixed what it found.
+  Committed and pushed the same day.
 - Next: test on the **real tablet** with a **release build**. Nothing has run on the LG G Pad
   yet. See "Next steps".
 
@@ -178,6 +181,59 @@ new build): pinned again within 1 s of the update; the staff home is `NONE`; **L
 the pinned Welcome screen back within 1 s; 121 unit tests, 6 instrumented tests and lint pass.
 The session 4 "Lock doesn't re-pin" report is closed. The emulator's staff PIN is now 1357.
 
+**Session 6 (2026-11-14, evening): attack pass.** Debug build on `LG_GPad_X8_API23`, device owner.
+
+Held up (no change needed):
+
+- Pinned after: `kill -9` of the process, `am force-stop`, a system-server restart, an update,
+  5 hours idle.
+- While pinned, none of these left the app: Home, Recents, Assist, Search, Camera, Settings,
+  Browser, Menu and Power keys; a status-bar swipe; `am start` of Settings from the shell; the
+  keyboard's "Input options" (Languages, Keyboard settings: logcat shows "Attempted Lock Task
+  Mode violation"); another app's button in the text menu.
+- Hostile start intent (VIEW, a `content://` path with `..`, fake extras): Welcome screen, no crash.
+- FileProvider read without a grant: `SecurityException`. Broadcasts to the two non-exported
+  receivers and a fake admin broadcast: not delivered.
+- PIN: 5 wrong tries lock it; the right PIN is refused during the lockout; Cancel and re-enter,
+  and killing the app, don't clear it; it works again afterwards.
+- 12,000 random touch/key events (`monkey`): no crash, no ANR, still pinned.
+- Submit hammered (5 at once, then 3 in a row) with a valid form: **one** row, **one** PDF,
+  counter +1, `.tmp/` empty, nothing of the visitor's in logcat. The PDF has 2 pages.
+  ZIP `850011234` saved as `85001-1234`; street `99_Percent-Rd.#5` accepted.
+
+Found and fixed:
+
+- **Copy/paste leaked between visitors.** A long press on a field offered Cut/Copy/Paste, and
+  the next visitor's empty field offered Paste with the previous visitor's text. The menu also
+  listed other apps' text actions ("API Demos" on the emulator; Translate and the like on a real
+  tablet). `MainActivity.onActionModeStarted` now closes every action mode, and the clipboard
+  is emptied whenever the visitor screen comes up. Checked: text can be selected, no menu.
+  (`PrivateTextInput` also replaces Compose's `LocalTextToolbar`, but this Compose version
+  doesn't go through it; the activity hook is what works.)
+- **Microphone key on the keyboard.** Fields now ask for no mic key (`privateImeOptions`);
+  on the emulator's keyboard the key and its empty strip are gone. Other keyboards may ignore it.
+- **A half-filled form could outlive a sleeping tablet.** The idle timer read `System.nanoTime`,
+  which stops in deep sleep, as coroutine delays do. It now reads `elapsedRealtime`, and
+  `IntakeViewModel.onShownAgain` (from `onStart`) wipes a form left longer than the idle timeout
+  plus the countdown (100 s). 2 new unit tests. The emulator never deep-sleeps, so this is
+  covered by the unit tests only.
+- **Nothing restarted the app if its process died in the background** (the limit noted above).
+  `kiosk/KioskWatchdogReceiver`: an inexact alarm about once a minute starts `MainActivity` if
+  the app is device owner and no `MainActivity` exists. Checked: staff in Settings, process
+  killed, pinned Welcome screen back within 30 s. A force-stop cancels the alarm; that only
+  happens from adb (running the instrumented tests ends with one: press Home afterwards).
+- **Submit tapped again while the form scrolls to the first error** could stop the scroll
+  part-way. Reproduced only with overlapping injected taps, faster than a finger. Touches are
+  now swallowed while that scroll runs. Checked: 6 taps in 2 s land on the first error, 4 of 4.
+
+Not fixed, on purpose or not yet:
+
+- On a **full disk** the PIN can't be checked (the attempt counter can't be saved), so staff
+  can't get in to back up or delete. Not reproduced, read from the code. A waiver is about
+  75 KB, so waivers alone won't fill the tablet.
+- The PIN screen shows a lockout only after the next try, not on opening.
+- The emulator now holds test waivers 0002 and 0003 ("Zed Test-Case").
+
 Still open:
 
 - While the screen is off, `returnToFrontIfHidden` keeps waking every 3 s to check whether the
@@ -262,7 +318,8 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 | PDF viewer and share | `ui/staff/WaiverViewerScreen.kt`, `PdfPages.kt`, `res/xml/file_paths.xml` |
 | Backup loop; folder-picker adapter; service | `data/backup/BackupRunner.kt`, `SafBackupFolder.kt`, `SafBackupService.kt` |
 | Backup and Maintenance screens | `ui/staff/BackupSection.kt`, `MaintenanceSection.kt` |
-| Kiosk (device owner, Lock Task); restart after an update | `kiosk/`, `res/xml/device_admin.xml` |
+| Kiosk (device owner, Lock Task); restart after an update; watchdog alarm | `kiosk/`, `res/xml/device_admin.xml` |
+| No copy/paste menu, clipboard wipe, no mic key | `MainActivity.onActionModeStarted`, `ui/PrivateTextInput.kt` |
 | Staff strings | `res/values/strings_staff.xml` |
 | Shared test data | `app/src/test/.../TestFixtures.kt`, `ui/staff/StaffFakes.kt` |
 | Device tests | `app/src/androidTest/` (PDF writer; save and search) |
@@ -298,6 +355,7 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 5. **Hardening:**
    - a baseline profile
    - the encryption decision
+   - USB debugging on the front-desk tablet: on or off (`KIOSK_SETUP.md` section 6)
    - accessibility
    - consider changing the `ca.safehaven.intake` package/applicationId before the first real
      install

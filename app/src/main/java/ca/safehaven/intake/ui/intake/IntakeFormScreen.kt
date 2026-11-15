@@ -83,6 +83,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
 
 private val CONTENT_MAX_WIDTH = 960.dp
@@ -118,80 +120,108 @@ fun IntakeFormScreen(
 ) {
     val requesters = remember { Field.entries.associateWith { BringIntoViewRequester() } }
     val scope = rememberCoroutineScope()
+    // True while the form is scrolling to the first error after Submit.
+    var scrollingToError by remember { mutableStateOf(false) }
     val submitAndShowFirstError: () -> Unit = {
         onSubmit()
         // The errors are always up to date (validated on every change), so the first one is known now.
-        SCREEN_ORDER.firstOrNull { it in form.errors }?.let { field ->
-            scope.launch { requesters[field]?.bringIntoView() }
+        if (!scrollingToError) {
+            SCREEN_ORDER.firstOrNull { it in form.errors }?.let { field ->
+                scrollingToError = true
+                scope.launch {
+                    try {
+                        requesters[field]?.bringIntoView()
+                    } finally {
+                        scrollingToError = false
+                    }
+                }
+            }
         }
     }
 
     CompositionLocalProvider(LocalFieldRequesters provides requesters) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Box(Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.widthIn(max = CONTENT_MAX_WIDTH).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 32.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Header(shelterName)
-                Text(
-                    stringResource(R.string.form_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                SectionTitle(R.string.section_contact)
-                ContactFields(form, onInputChange, onFieldBlurred)
-
-                SectionTitle(R.string.section_visit)
-                VisitFields(form, onInputChange, onFieldBlurred)
-
-                SectionTitle(R.string.section_waiver)
-                WaiverText()
-                WaiverClause.entries.forEach { clause ->
-                    ClauseRow(clause, form, onInputChange, onFieldBlurred)
-                }
-
-                SectionTitle(R.string.section_sign)
-                SignFields(form, config, onInputChange, onFieldBlurred)
-
-                if (form.saveFailed) {
-                    ErrorBanner(R.string.form_save_failed)
-                } else if (form.submitAttempted && form.errors.isNotEmpty() && !form.isSubmitting) {
-                    ErrorBanner(R.string.form_fix_errors)
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
+                Column(
+                    modifier = Modifier.widthIn(max = CONTENT_MAX_WIDTH).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    OutlinedButton(
-                        onClick = onCancel,
-                        enabled = !form.isSubmitting,
-                        modifier = Modifier.heightIn(min = BUTTON_MIN_HEIGHT).widthIn(min = 160.dp),
-                    ) { Text(stringResource(R.string.form_cancel)) }
+                    Header(shelterName)
+                    Text(
+                        stringResource(R.string.form_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
 
-                    Button(
-                        onClick = submitAndShowFirstError,
-                        enabled = !form.isSubmitting,
-                        modifier = Modifier.heightIn(min = BUTTON_MIN_HEIGHT).widthIn(min = 240.dp),
+                    SectionTitle(R.string.section_contact)
+                    ContactFields(form, onInputChange, onFieldBlurred)
+
+                    SectionTitle(R.string.section_visit)
+                    VisitFields(form, onInputChange, onFieldBlurred)
+
+                    SectionTitle(R.string.section_waiver)
+                    WaiverText()
+                    WaiverClause.entries.forEach { clause ->
+                        ClauseRow(clause, form, onInputChange, onFieldBlurred)
+                    }
+
+                    SectionTitle(R.string.section_sign)
+                    SignFields(form, config, onInputChange, onFieldBlurred)
+
+                    if (form.saveFailed) {
+                        ErrorBanner(R.string.form_save_failed)
+                    } else if (form.submitAttempted && form.errors.isNotEmpty() && !form.isSubmitting) {
+                        ErrorBanner(R.string.form_fix_errors)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
                     ) {
-                        if (form.isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp),
-                                strokeWidth = 3.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        } else {
-                            Text(stringResource(R.string.form_submit))
+                        OutlinedButton(
+                            onClick = onCancel,
+                            enabled = !form.isSubmitting,
+                            modifier = Modifier.heightIn(min = BUTTON_MIN_HEIGHT).widthIn(min = 160.dp),
+                        ) { Text(stringResource(R.string.form_cancel)) }
+
+                        Button(
+                            onClick = submitAndShowFirstError,
+                            enabled = !form.isSubmitting,
+                            modifier = Modifier.heightIn(min = BUTTON_MIN_HEIGHT).widthIn(min = 240.dp),
+                        ) {
+                            if (form.isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp),
+                                    strokeWidth = 3.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            } else {
+                                Text(stringResource(R.string.form_submit))
+                            }
                         }
                     }
                 }
+            }
+            // Submit tapped several times quickly: the extra taps used to stop the scroll
+            // part-way (a touch stops a moving list) and land on whatever passed under the
+            // finger, leaving the first error out of sight. While the scroll runs, this
+            // swallows every touch.
+            if (scrollingToError) {
+                Box(
+                    Modifier.matchParentSize().pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                            }
+                        }
+                    },
+                )
             }
         }
     }

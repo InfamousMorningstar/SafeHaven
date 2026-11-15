@@ -2,12 +2,15 @@ package ca.safehaven.intake
 
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import android.view.ActionMode
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -69,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        isAlive = true
         // Front desk: keep the screen on while the app is showing (tablet stays plugged in).
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // Autofill (API 26+) could offer one visitor's details to the next. Android 6/7 has no Autofill.
@@ -109,10 +113,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        // Not on rotation: the next instance is created straight away.
+        if (!isChangingConfigurations) isAlive = false
+        super.onDestroy()
+    }
+
     override fun onStart() {
         super.onStart()
         isHidden = false
         staffSession.onActivityStarted()
+        // A form left behind a switched-off screen for longer than the idle timeout is wiped.
+        viewModel.onShownAgain()
     }
 
     override fun onResume() {
@@ -159,6 +171,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * No Cut/Copy/Paste menu anywhere in the app. What one visitor copied would be offered to the
+     * next one as "Paste", and Android adds other apps' text actions (Translate, Web search) to
+     * the same menu. Compose shows that menu as a platform action mode, so closing every action
+     * mode as it starts removes it whichever Compose code path opened it (PrivateTextInput covers
+     * the older path). Nothing else in the app uses action modes.
+     */
+    override fun onActionModeStarted(mode: ActionMode) {
+        super.onActionModeStarted(mode)
+        mode.finish()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // Home pressed (this is the kiosk's Home app) or the launcher icon tapped: always land on
@@ -182,6 +206,18 @@ class MainActivity : ComponentActivity() {
             kiosk("unlock") { if (kioskController.isLocked(this)) kioskController.unlock(this) }
         } else {
             kiosk("lock") { if (!kioskController.isLocked(this)) kioskController.lock(this) }
+        }
+        // Nothing copied by staff (or by anyone, through the keyboard) is left for a visitor to paste.
+        if (mode == AppMode.VISITOR) kiosk("clear clipboard") { clearClipboard() }
+    }
+
+    private fun clearClipboard() {
+        val clipboard = getSystemService(ClipboardManager::class.java) ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            clipboard.clearPrimaryClip()
+        } else {
+            // Android 6/7 can't empty the clipboard, only replace what's in it.
+            clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
         }
     }
 
@@ -212,10 +248,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
-        const val TAG = "MainActivity"
-        const val FIRST_PIN_CHECK_MILLIS = 300L
-        const val PIN_CHECK_MILLIS = 5_000L
-        const val RETURN_RETRY_MILLIS = 3_000L
+    companion object {
+        /**
+         * True while this screen exists in the process. KioskWatchdogReceiver restarts the app
+         * only when it doesn't (the process was killed, or Android destroyed the screen).
+         */
+        @Volatile
+        var isAlive = false
+            private set
+
+        private const val TAG = "MainActivity"
+        private const val FIRST_PIN_CHECK_MILLIS = 300L
+        private const val PIN_CHECK_MILLIS = 5_000L
+        private const val RETURN_RETRY_MILLIS = 3_000L
     }
 }

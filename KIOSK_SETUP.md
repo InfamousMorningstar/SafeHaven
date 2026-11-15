@@ -110,6 +110,19 @@ and Drive apps are easy to reach.
 
 Skip this step if backups will go to an SD card or USB stick instead.
 
+### Keyboard settings (do this now too)
+
+Visitors type personal details, so set the tablet's keyboard up before the kiosk locks:
+Settings → **Language & input** → the keyboard in use (LG Keyboard or Google Keyboard):
+
+- turn **off** word suggestions / prediction, and any "learn from what I type" or personalised
+  suggestions option;
+- turn **off** voice typing (Google voice typing), so no microphone key is offered;
+- turn **off** any clipboard feature the keyboard has (LG calls it "Clip Tray").
+
+The app already asks the keyboard for no suggestions and no microphone key, and removes the
+Cut/Copy/Paste menu from its fields, but a keyboard is free to ignore the first two.
+
 ## 5. Open the app
 
 Open **Safe Haven** once from the app drawer. On first start it:
@@ -123,6 +136,9 @@ If Android asks which app to use as Home, it shouldn't, but if it does, choose S
 "Always".
 
 Reboot the tablet to check: it should go straight to the waiver Welcome screen.
+
+If Android ever closes the app in the background (low memory, a crash), it starts itself again
+within a minute or so and pins.
 
 ## 6. Staff access, the PIN and the backup folder
 
@@ -143,6 +159,13 @@ Reboot the tablet to check: it should go straight to the waiver Welcome screen.
   straight away. The waivers are untouched. If USB debugging was turned off, or the PC isn't
   one the tablet trusts, the only way left is a factory reset (section 8), which erases every
   waiver on the tablet: so keep the PIN written down and back up often.
+- **USB debugging: leave it on or turn it off?** Left on, a forgotten PIN can be reset and the
+  app updated from the setup PC. The risk: anyone who plugs in a PC **the tablet already
+  trusts** can reset the PIN, set their own and read the waivers. A PC it doesn't trust needs
+  someone to accept an "Allow USB debugging?" prompt on the tablet first (whether that prompt
+  can show while the kiosk is pinned hasn't been tested on the real tablet). Turned off (Maintenance → Exit kiosk → Settings →
+  Developer options), nobody can do that, but a forgotten PIN then means a factory reset, which
+  erases the waivers. Either way: keep the setup PC secure, and back up often.
 - **Backup folder:** staff area → **Backup** → **Choose folder**. The app unpins itself while the
   Android folder picker is open. In the picker, open the menu (☰) and pick the place:
   - **Google Drive** (if it's listed, see "Backup notes" below) → the shelter's folder;

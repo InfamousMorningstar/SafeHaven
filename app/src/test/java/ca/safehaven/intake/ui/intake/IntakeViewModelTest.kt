@@ -106,6 +106,43 @@ class IntakeViewModelTest {
         assertEquals(ValidationError.INVALID, vm.state.value.form.visibleError(Field.PHONE))
     }
 
+    /** The tablet slept: coroutine timers stood still, but the clock the ViewModel reads moved on. */
+    @Test fun formLeftBehindASleepingScreenIsWipedOnWake() = runTest(dispatcher) {
+        var asleepFor = 0L
+        val vm = IntakeViewModel(
+            FakeSubmitter(),
+            config,
+            now = { dispatcher.scheduler.currentTime + asleepFor },
+            today = { TestFixtures.TODAY },
+        )
+        vm.start()
+        vm.updateInput { it.copy(fullName = "Jane Smith") }
+
+        asleepFor = config.idleTimeoutMillis + config.stillThereSeconds * 1_000L
+        vm.onShownAgain()
+
+        assertEquals(VisitorScreen.Welcome, vm.state.value.screen)
+        assertEquals("", vm.state.value.form.input.fullName)
+    }
+
+    @Test fun aShortSleepKeepsTheForm() = runTest(dispatcher) {
+        var asleepFor = 0L
+        val vm = IntakeViewModel(
+            FakeSubmitter(),
+            config,
+            now = { dispatcher.scheduler.currentTime + asleepFor },
+            today = { TestFixtures.TODAY },
+        )
+        vm.start()
+        vm.updateInput { it.copy(fullName = "Jane Smith") }
+
+        asleepFor = config.idleTimeoutMillis / 2
+        vm.onShownAgain()
+
+        assertEquals(VisitorScreen.Form, vm.state.value.screen)
+        assertEquals("Jane Smith", vm.state.value.form.input.fullName)
+    }
+
     @Test fun idleFormAsksThenClears() = runTest(dispatcher) {
         val vm = viewModel()
         vm.start()
