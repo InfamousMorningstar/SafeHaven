@@ -29,7 +29,8 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
   (`domain/model/Waiver.kt`). Sessions 4 and 5 (the staff area, backup, kiosk, the review fixes,
   `KIOSK_SETUP.md`) are committed and pushed (2026-11-14, `0c937d0`). The kiosk re-pin work
   from the afternoon (`AppUpdatedReceiver`, `keepPinned`, `returnToFrontIfHidden`, the 5-minute
-  away limit) is committed and pushed after it (2026-11-14).
+  away limit) is committed and pushed after it (2026-11-14, `11f4e0e`), and the session 6 attack-pass
+  fixes after that (`f4a3add`).
 - **Toolchain:** Android Studio's bundled **JDK 25**. Gradle 9.1.0, AGP 8.13.0, Kotlin 2.2.21,
   KSP 2.3.13, Compose BOM 2025.08.00, Room 2.7.2.
 - **Client documents** are in `docs/client/`, which is **git-ignored on purpose because the repo
@@ -171,8 +172,8 @@ Two real weaknesses were found and fixed:
     5 s after Home or Recents. A plain `startActivity` alone was not enough; it also calls
     `moveTaskToFront` (hence the `REORDER_TASKS` permission).
   - A 20 s folder-picker visit still returns to an open staff area.
-  - Limit: if Android kills the app's process while Settings is open, nothing brings it back
-    until Home is pressed. The window is then open to whoever is at the tablet.
+  - Limit at the time: if Android kills the app's process while Settings is open, nothing
+    brings it back until Home is pressed. Fixed in session 6 (`KioskWatchdogReceiver`).
 - 121 unit tests pass; lint is clean.
 
 **Re-checked the same day, after the afternoon changes** (fresh boot, `adb install -r` of the
@@ -265,6 +266,11 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 
 - **Waiver wording:** confirm that `Waiver.kt` matches their current paper form, and that showing
   it in a public GitHub repo is fine.
+- **Forgotten-PIN reset and USB debugging** (Salman is asking the client, 2026-11-14): leave
+  USB debugging on at the front desk, or turn it off? On: a forgotten PIN can be reset from the
+  setup PC, but a PC the tablet trusts can reset the PIN and read the waivers. Off: a forgotten
+  PIN means a factory reset, which erases the waivers. Details in `KIOSK_SETUP.md` section 6.
+  No code change until they answer.
 
 ## Decisions already taken
 
@@ -345,17 +351,18 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 ## Next steps (in order)
 
 1. ~~Commit sessions 4 and 5; re-check that Lock re-pins~~ (done 2026-11-14).
-2. **Confirm the waiver wording with the client** (`Waiver.kt` is now public on GitHub), and ask
-   whether "pick a Drive folder once, then tap Back up now" is what they expect.
-3. **By hand on the emulator:** a full visitor submission and a backup run with this build
-   (the save was only exercised through the instrumented test), then the "still open" list.
+2. **Ask the client** (see "Check with the client"): the waiver wording (`Waiver.kt` is now
+   public on GitHub); whether "pick a Drive folder once, then tap Back up now" is what they
+   expect; USB debugging and the forgotten-PIN reset.
+3. **By hand on the emulator:** a backup run with this build, and re-run the 6 instrumented
+   tests (not run since before session 6), then the "still open" list. The full visitor
+   submission was done in session 6.
 4. **On the real tablet, with a release build:** the whole of `KIOSK_SETUP.md`; whether Google
    Drive appears in the folder picker (if not, backups go to SD/USB, or Drive needs its own
    code); `PdfRenderer` scaling in the viewer; PBKDF2 time for the PIN; typing lag in the form.
 5. **Hardening:**
    - a baseline profile
    - the encryption decision
-   - USB debugging on the front-desk tablet: on or off (`KIOSK_SETUP.md` section 6)
    - accessibility
    - consider changing the `ca.safehaven.intake` package/applicationId before the first real
      install
