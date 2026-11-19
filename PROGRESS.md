@@ -33,8 +33,8 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
   `KIOSK_SETUP.md`) are committed and pushed (2026-11-14, `0c937d0`). The kiosk re-pin work
   from the afternoon (`AppUpdatedReceiver`, `keepPinned`, `returnToFrontIfHidden`, the 5-minute
   away limit) is committed and pushed after it (2026-11-14, `11f4e0e`), and the session 6 attack-pass
-  fixes after that (`f4a3add`). Session 7 (2026-11-18) is committed locally; pushing is the
-  developer's call.
+  fixes after that (`f4a3add`). Session 7 (2026-11-18) is committed and pushed (`edd2a3d`
+  and the PROGRESS update after it).
 - **Release signing key** (created 2026-11-18): `C:\Users\sahmx\VSCode Projects\keys\safehaven-release.jks`,
   outside the repo, with its passwords in `keystore.properties` in the project root (git-ignored).
   Certificate SHA-256 `1A:62:93:DE:...:F9:E5:55:FD` (full value in README). **Not backed up yet:
