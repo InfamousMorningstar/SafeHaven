@@ -10,8 +10,11 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.UserManager
 import android.provider.Settings
-import ca.safehaven.intake.MainActivity
+import ca.safehaven.intake.BuildConfig
 import ca.safehaven.intake.staff.KioskController
+
+/** The manifest's Home alias for MainActivity (class names use the namespace, not the app ID). */
+private const val KIOSK_HOME_ALIAS = "ca.safehaven.intake.KioskHome"
 
 /**
  * Kiosk lock through the device-owner APIs (KIOSK_SETUP.md). Every call is a no-op unless the
@@ -26,8 +29,14 @@ class DeviceOwnerKioskController(context: Context) : KioskController {
     private val dpm = appContext.getSystemService(DevicePolicyManager::class.java)
     private val admin = ComponentName(appContext, KioskAdminReceiver::class.java)
 
+    /**
+     * True only when the kiosk is switched on for this build (KIOSK_ENABLED in
+     * app/build.gradle.kts) and the app is the device owner. With the kiosk switched off, every
+     * kiosk feature (pinning, Home app, watchdog, restart after an update) stays idle even on a
+     * tablet where the app happens to be device owner.
+     */
     override val isDeviceOwner: Boolean
-        get() = dpm?.isDeviceOwnerApp(packageName) == true
+        get() = BuildConfig.KIOSK_ENABLED && dpm?.isDeviceOwnerApp(packageName) == true
 
     override fun applyPolicies() {
         val dpm = ownerDpm() ?: return
@@ -41,7 +50,8 @@ class DeviceOwnerKioskController(context: Context) : KioskController {
                 addCategory(Intent.CATEGORY_HOME)
                 addCategory(Intent.CATEGORY_DEFAULT)
             }
-            dpm.addPersistentPreferredActivity(admin, home, ComponentName(appContext, MainActivity::class.java))
+            // The Home intent filter is on the KioskHome alias (AndroidManifest.xml), not on MainActivity.
+            dpm.addPersistentPreferredActivity(admin, home, ComponentName(appContext, KIOSK_HOME_ALIAS))
         }
 
         // No lock screen after a reboot or screen-off (API 23). Android refuses this while a
@@ -94,7 +104,7 @@ class DeviceOwnerKioskController(context: Context) : KioskController {
         return am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
     }
 
-    private fun ownerDpm(): DevicePolicyManager? = dpm?.takeIf { it.isDeviceOwnerApp(packageName) }
+    private fun ownerDpm(): DevicePolicyManager? = dpm?.takeIf { isDeviceOwner }
 
     private inline fun attempt(block: () -> Unit) {
         try {

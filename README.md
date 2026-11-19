@@ -11,8 +11,15 @@ offline, and clears itself for the next person.
 
 **Status:** the visitor waiver, the PIN-protected staff area, backup to a chosen folder and the
 kiosk lock are built and tested on an Android 6.0 emulator that matches the target tablet (LG G
-Pad X 8.0). Nothing has run on the real tablet yet. Setting the tablet up as a kiosk is in
-[`KIOSK_SETUP.md`](KIOSK_SETUP.md).
+Pad X 8.0). Nothing has run on the real tablet yet.
+
+**The pilot build has the kiosk lock switched off** (`KIOSK_ENABLED = false` in
+`app/build.gradle.kts`). The client installs the APK themselves, from a link, and uses Android's
+screen pinning instead: see [`PILOT_GUIDE.md`](PILOT_GUIDE.md). The kiosk code is all still
+there; [`KIOSK_SETUP.md`](KIOSK_SETUP.md) describes turning it back on.
+
+The installed app's ID is **`org.azshfa.waiver`**. It must never change once the app is on the
+client's tablet. The Kotlin package and namespace stay `ca.safehaven.intake` (internal only).
 
 ## Build and run
 
@@ -41,7 +48,7 @@ On an emulator where the app is the **device owner** (kiosk testing), don't use
 `connectedAndroidTest`: it tries to uninstall the app afterwards, which a device owner refuses.
 Build with `gradlew assembleDebug assembleDebugAndroidTest`, install both APKs with
 `adb install -r`, then run
-`adb shell am instrument -w ca.safehaven.intake.test/androidx.test.runner.AndroidJUnitRunner`.
+`adb shell am instrument -w org.azshfa.waiver.test/androidx.test.runner.AndroidJUnitRunner`.
 
 ### Release signing
 
@@ -57,6 +64,11 @@ keyPassword=...
 
 **Back up the keystore in two places.** Every update has to be signed with the same key, and
 reinstalling instead wipes all PDFs stored on the tablet.
+
+The release key was created on 2026-11-18 and lives outside the repo, in
+`..\keys\safehaven-release.jks` next to the project folder. Its certificate's SHA-256 is
+`1A:62:93:DE:C7:73:A4:8A:5E:E8:CF:97:1E:B9:1A:5B:36:81:6F:A8:01:60:A4:38:18:07:C5:87:F9:E5:55:FD`.
+An APK signed with any other key won't install over the client's copy.
 
 ## What's built
 
@@ -81,7 +93,7 @@ reinstalling instead wipes all PDFs stored on the tablet.
 | Staff area behind a PIN (long-press the logo): salted PBKDF2 hash, lockout after 5 wrong tries, auto-lock after 2 idle minutes, no screenshots | `data/staff/`, `ui/staff/`, `MainActivity.kt` |
 | Records list and search, PDF viewer, share one PDF, delete | `ui/staff/RecordsSection.kt`, `WaiverViewerScreen.kt` |
 | Backup: copies PDFs not yet backed up to a folder picked with Android's folder picker (SD card, USB stick, or Google Drive if the Drive app offers folders) | `data/backup/`, `ui/staff/BackupSection.kt` |
-| Kiosk: device owner, Lock Task, Home app, starts on boot | `kiosk/`, [`KIOSK_SETUP.md`](KIOSK_SETUP.md) |
+| Kiosk: device owner, Lock Task, Home app, starts on boot (switched off for the pilot) | `kiosk/`, [`KIOSK_SETUP.md`](KIOSK_SETUP.md) |
 | Forgotten-PIN reset from a PC over USB | `staff/PinResetReceiver.kt` |
 
 Settings the client may want to change (timeouts, adult age, default state, device label) are in

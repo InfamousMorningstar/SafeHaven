@@ -1,6 +1,6 @@
 # SafeHaven: progress and handoff
 
-Last updated: 2026-11-14 (end of session 6, the attack pass). Read this first when resuming work.
+Last updated: 2026-11-18 (session 7, the remote-pilot build). Read this first when resuming work.
 
 **Design source:** `D:\Obsidian\Nebula\Projects\App Idea - Technical Plan.md`. Section numbers
 below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](README.md).
@@ -14,13 +14,16 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
 - **Staff area, backup and kiosk are built** (sessions 4 and 5, committed 2026-11-14): PIN with
   lockout, records list/search, PDF viewer, share, delete, backup to a folder picked with
   Android's folder picker, device-owner kiosk (`KIOSK_SETUP.md`).
-- **123 unit tests** pass and `lint` reports no errors (2026-11-14, session 6). The
-  **6 instrumented tests** last ran before session 6, on the Android 6.0 emulator that matches
-  the client's tablet; session 6 didn't change the code they cover.
-- Session 6 attacked the app on the emulator (see the session log) and fixed what it found.
-  Committed and pushed the same day.
-- Next: test on the **real tablet** with a **release build**. Nothing has run on the LG G Pad
-  yet. See "Next steps".
+- **123 unit tests** and **7 instrumented tests** pass, and `lint` reports no errors (debug and
+  release, 2026-11-18).
+- **Session 7: the remote pilot.** The client is in Arizona and installs the app themselves, so:
+  - the app ID is now **`org.azshfa.waiver`** (fixed for good once installed);
+  - the **kiosk lock is switched off** (`KIOSK_ENABLED = false`, code kept); the shelter uses
+    Android's **screen pinning** instead;
+  - the **release signing key exists** (outside the repo; see "Current state");
+  - [`PILOT_GUIDE.md`](PILOT_GUIDE.md) is the client's install-and-use guide;
+  - the **release build was tested** on a fresh, non-kiosk copy of the tablet emulator.
+- Next: send the client the APK and the pilot guide. Nothing has run on the real LG G Pad yet.
 
 ## Current state
 
@@ -30,7 +33,13 @@ below (3.2, D3, etc.) refer to that plan. **Build and run steps:** [README.md](R
   `KIOSK_SETUP.md`) are committed and pushed (2026-11-14, `0c937d0`). The kiosk re-pin work
   from the afternoon (`AppUpdatedReceiver`, `keepPinned`, `returnToFrontIfHidden`, the 5-minute
   away limit) is committed and pushed after it (2026-11-14, `11f4e0e`), and the session 6 attack-pass
-  fixes after that (`f4a3add`).
+  fixes after that (`f4a3add`). Session 7 (2026-11-18) is committed locally; pushing is the
+  developer's call.
+- **Release signing key** (created 2026-11-18): `C:\Users\sahmx\VSCode Projects\keys\safehaven-release.jks`,
+  outside the repo, with its passwords in `keystore.properties` in the project root (git-ignored).
+  Certificate SHA-256 `1A:62:93:DE:...:F9:E5:55:FD` (full value in README). **Not backed up yet:
+  copy both files to two places off this PC.** Losing them means the client's app can never
+  be updated without wiping its waivers.
 - **Toolchain:** Android Studio's bundled **JDK 25**. Gradle 9.1.0, AGP 8.13.0, Kotlin 2.2.21,
   KSP 2.3.13, Compose BOM 2025.08.00, Room 2.7.2.
 - **Client documents** are in `docs/client/`, which is **git-ignored on purpose because the repo
@@ -55,6 +64,12 @@ optimistic.
 
 The IDE's tap/type tool fails on API 23 (it passes a `-d` flag Android 6 doesn't support). Use
 `adb shell input ...` directly.
+
+A second AVD, **`LG_GPad_X8_API23_pilot`** (same specs), is a plain tablet with **no device
+owner**: it's how the client runs the pilot. `LG_GPad_X8_API23` still has an old,
+pre-rename build (`ca.safehaven.intake`) as device owner, for kiosk work. A brand-new Android 6
+AVD encrypts its storage and restarts once on first boot; installs fail with "Aborted" until
+it has.
 
 ### Verified on 2026-11-09 on `LG_GPad_X8_API23`
 
@@ -227,13 +242,55 @@ Found and fixed:
   part-way. Reproduced only with overlapping injected taps, faster than a finger. Touches are
   now swallowed while that scroll runs. Checked: 6 taps in 2 s land on the first error, 4 of 4.
 
+**Session 7 (2026-11-18): the remote pilot.** The client is in Arizona and will install and run
+the app themselves for a while, so nobody can set the tablet up as a kiosk.
+
+- **App ID** changed to `org.azshfa.waiver` (the `ca.` was left over from the Canadian design).
+  Only the installed ID: the Kotlin package and namespace stay `ca.safehaven.intake`, so the
+  component names are `org.azshfa.waiver/ca.safehaven.intake....`. The PIN-reset broadcast action
+  is now `org.azshfa.waiver.RESET_STAFF_PIN`.
+- **Kiosk switched off, not deleted:** `val kioskEnabled = false` in `app/build.gradle.kts` sets
+  `BuildConfig.KIOSK_ENABLED` and a manifest placeholder. `DeviceOwnerKioskController.isDeviceOwner`
+  is false unless it's on, which idles pinning, the Home app, the watchdog and the
+  restart-after-update. The HOME intent filter moved to an `activity-alias` (`.KioskHome`) that is
+  disabled with the kiosk, so the shelter's tablet never asks which Home screen to use.
+  Maintenance says the kiosk isn't part of this version and points to screen pinning.
+- **Release key** created (see "Current state"); the release APK is signed with it (v1 + v2).
+- **Found and fixed: a signature could lose every stroke after the first.** Seen on the release
+  build's PDF. After an early Submit, fixing the last error (usually the signature) removed the
+  "Please check the highlighted fields" banner below the pad; scrolled to the bottom, the page
+  then slid down about 130 px under the finger, so the next strokes started above the pad and
+  scrolled the page instead of drawing. The first stroke alone passes validation, so the PDF
+  got part of a signature. The banner now keeps its space (hidden, and hidden from TalkBack).
+  Checked on the emulator: pad at the same place before and after, all 3 strokes on the PDF.
+  New instrumented test `SignaturePadStaysPutTest`.
+- **Tested on `LG_GPad_X8_API23_pilot`, release build:** the client's install path (APK opened
+  on the tablet → "Install blocked" → Unknown sources → Install: "does not require any special
+  access"); Home goes to the normal launcher with no chooser; no watchdog alarm; an adult and a
+  minor waiver, both PDFs correct (logo, every field, the guardian line, full signature);
+  first-time PIN; search by guardian, phone and a no-match term; PDF viewer; Share; Maintenance
+  text; backup to a new "Waivers" folder (copy identical, SHA-1 compared); the Recents thumbnail
+  is blank. 6 + 1 instrumented tests pass under the new ID (debug build).
+- **Screen pinning, checked (debug build):** Home, Recents, Back, the notification key, a
+  status-bar swipe, launching Settings and screen off/on all leave the app pinned. Lock keeps it
+  pinned. The **folder picker opens while pinned** and returns pinned (it runs in the app's task).
+  A waiver filled in and saved while pinned. **Share is blocked while pinned**: the email app
+  opens in its own task ("Attempted Lock Task Mode violation") and the tap used to do nothing.
+  The viewer now checks for screen pinning and says to unpin first (`staff_viewer_share_unpin_first`).
+  On this emulator the Recents pin button showed Android's "Screen is pinned / GOT IT" dialog,
+  which uiautomator can't see and release screenshots show as blank; it took a while to find.
+
 Not fixed, on purpose or not yet:
 
 - On a **full disk** the PIN can't be checked (the attempt counter can't be saved), so staff
   can't get in to back up or delete. Not reproduced, read from the code. A waiver is about
   75 KB, so waivers alone won't fill the tablet.
 - The PIN screen shows a lockout only after the next try, not on opening.
-- The emulator now holds test waivers 0002 and 0003 ("Zed Test-Case").
+- The kiosk emulator holds test waivers 0002 and 0003 ("Zed Test-Case"), from before the rename.
+- **Pilot without the kiosk:** anyone at Settings can uninstall the app or clear its data, which
+  deletes every waiver. `PILOT_GUIDE.md` says never to; a tablet screen lock plus "ask for PIN
+  before unpinning" keeps visitors out of Settings.
+- **Forgotten PIN in the pilot:** the reset needs adb, so the developer and a PC at the shelter.
 
 Still open:
 
@@ -290,7 +347,9 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 | D3 storage | App-private `filesDir/intake/YYYY/MM/`. Staff share one PDF at a time through `FileProvider` |
 | D4 encryption | **Not decided** |
 | D5 backup | **Copy to a folder staff pick with Android's folder picker** (SD card, USB stick, or Google Drive if the Drive app offers folders there). No Google Drive code in the app. Whether Drive shows up on the real tablet is **unknown**; the client prefers Drive |
-| D6 kiosk | Device Owner + Lock Task, **built** (`KIOSK_SETUP.md`). Checked on the emulator only |
+| D6 kiosk | Device Owner + Lock Task, **built** (`KIOSK_SETUP.md`). Checked on the emulator only. **Switched off for the remote pilot** (2026-11-18): the shelter installs the APK and uses screen pinning ([`PILOT_GUIDE.md`](PILOT_GUIDE.md)) |
+| App ID | **`org.azshfa.waiver`** (2026-11-18). Never change it after the first install on the client's tablet |
+| Signing | One release key, kept by the developer outside the repo (2026-11-18) |
 | Staff PIN | 4–8 digits, salted PBKDF2 hash in a private SharedPreferences file (not DataStore), 5 tries then a lockout that doubles up to 15 minutes. No default PIN. Reset only over USB (`PinResetReceiver`) |
 | Staff auto-lock | 2 minutes idle, or the app leaving the foreground. More than 5 minutes in another app opened from the staff area also locks, and the kiosk pulls the app back to the front. A running backup carries on |
 | Save order | PDF to `.tmp/`, then the Room row, then the rename. The row is what makes a save count |
@@ -328,7 +387,8 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 | No copy/paste menu, clipboard wipe, no mic key | `MainActivity.onActionModeStarted`, `ui/PrivateTextInput.kt` |
 | Staff strings | `res/values/strings_staff.xml` |
 | Shared test data | `app/src/test/.../TestFixtures.kt`, `ui/staff/StaffFakes.kt` |
-| Device tests | `app/src/androidTest/` (PDF writer; save and search) |
+| Device tests | `app/src/androidTest/` (PDF writer; save and search; signature pad stays put) |
+| Kiosk on/off switch | `kioskEnabled` in `app/build.gradle.kts`; `.KioskHome` alias in the manifest |
 
 ## Known issues and notes
 
@@ -351,21 +411,20 @@ Client: **Safe Haven for Animals (SHFA)**, Arizona, USA. Public contact: shinfo@
 ## Next steps (in order)
 
 1. ~~Commit sessions 4 and 5; re-check that Lock re-pins~~ (done 2026-11-14).
-2. **Ask the client** (see "Check with the client"): the waiver wording (`Waiver.kt` is now
-   public on GitHub); whether "pick a Drive folder once, then tap Back up now" is what they
-   expect; USB debugging and the forgotten-PIN reset.
-3. **By hand on the emulator:** a backup run with this build, and re-run the 6 instrumented
-   tests (not run since before session 6), then the "still open" list. The full visitor
-   submission was done in session 6.
-4. **On the real tablet, with a release build:** the whole of `KIOSK_SETUP.md`; whether Google
-   Drive appears in the folder picker (if not, backups go to SD/USB, or Drive needs its own
-   code); `PdfRenderer` scaling in the viewer; PBKDF2 time for the PIN; typing lag in the form.
-5. **Hardening:**
+2. **Back up the release key** (`..\keys\safehaven-release.jks` and `keystore.properties`) to two
+   places off this PC.
+3. **Send the client** the release APK (`app/build/outputs/apk/release/app-release.apk`,
+   renamed `SafeHaven-waiver-0.1.0.apk`) and `PILOT_GUIDE.md` (as a PDF), with the questions
+   in "Check with the client".
+4. **During the pilot, ask the shelter to report:** whether Google Drive appears in the folder
+   picker; the keyboard (suggestions off?); how screen pinning works for them; typing lag and
+   the PIN check time on the real tablet; anything odd, with a phone photo.
+5. **After the pilot:** the full kiosk if they want it (`kioskEnabled = true`, a video call,
+   a factory reset after a backup; `KIOSK_SETUP.md`).
+6. **Hardening:**
    - a baseline profile
    - the encryption decision
    - accessibility
-   - consider changing the `ca.safehaven.intake` package/applicationId before the first real
-     install
-6. **Future:** more forms (pre-adoption questionnaire, adoption contract).
-7. **Client milestones** (from the proposal): discovery chat → first demo (2–3 weeks) → 1–2-week
+7. **Future:** more forms (pre-adoption questionnaire, adoption contract).
+8. **Client milestones** (from the proposal): discovery chat → first demo (2–3 weeks) → 1–2-week
    front-desk pilot → handover (6–10 weeks in total).

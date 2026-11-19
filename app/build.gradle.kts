@@ -21,7 +21,19 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "ca.safehaven.intake"
+        // The installed app's identity. It can never change once the app is on the client's
+        // tablet: a different ID is a different app, and the waivers stay with the old one.
+        // (The Kotlin package and namespace, ca.safehaven.intake, are internal and can change.)
+        applicationId = "org.azshfa.waiver"
+
+        // Device-owner kiosk (KIOSK_SETUP.md). Off for the remote pilot: the shelter installs the
+        // APK itself and uses Android's own screen pinning instead. With this false the kiosk code
+        // stays in the app but never runs, and the app doesn't offer itself as the Home screen.
+        // Set it to true (one line) to bring the kiosk back.
+        val kioskEnabled = false
+        buildConfigField("boolean", "KIOSK_ENABLED", kioskEnabled.toString())
+        manifestPlaceholders["kioskEnabled"] = kioskEnabled.toString()
+
         // LG G Pad X 8.0 ships with Android 6.0.1 (API 23). Anything newer goes behind SDK_INT checks.
         minSdk = 23
         targetSdk = 36

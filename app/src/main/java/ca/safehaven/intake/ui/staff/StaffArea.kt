@@ -144,6 +144,7 @@ private fun StaffHome(
                         MaintenanceSection(
                             changePin = changePin,
                             isDeviceOwner = container.kiosk.isDeviceOwner,
+                            kioskInBuild = BuildConfig.KIOSK_ENABLED,
                             appVersion = BuildConfig.VERSION_NAME,
                             deviceLabel = container.config.deviceLabel,
                             waiverCount = count,

@@ -15,6 +15,14 @@ When it's done:
 The app does this by becoming the tablet's **device owner**, a special status Android only
 grants to one app, from a PC, on a tablet with no accounts on it.
 
+> **The pilot build has the kiosk switched off.** For the remote pilot (2026-11) the shelter
+> installs the APK themselves and uses Android's screen pinning instead
+> ([`PILOT_GUIDE.md`](PILOT_GUIDE.md)). To use this guide, the developer first sets
+> `val kioskEnabled = true` in `app/build.gradle.kts` and builds a new release APK, signed with
+> the same key. Until then, `dpm set-device-owner` still succeeds, but the app ignores it.
+> Moving from the pilot to the kiosk means a factory reset (section 1): **back up every
+> waiver first.**
+
 ## Before you start: install adb on the PC
 
 `adb` is Google's command-line tool for talking to Android devices.
@@ -69,14 +77,14 @@ no email account). The simplest way to get there is a factory reset.
 ## 3. Make the app the device owner
 
 ```
-adb shell dpm set-device-owner ca.safehaven.intake/.kiosk.KioskAdminReceiver
+adb shell dpm set-device-owner org.azshfa.waiver/ca.safehaven.intake.kiosk.KioskAdminReceiver
 ```
 
 **Success** looks like:
 
 ```
-Success: Device owner set to package ca.safehaven.intake
-Active admin set to component {ca.safehaven.intake/ca.safehaven.intake.kiosk.KioskAdminReceiver}
+Success: Device owner set to package org.azshfa.waiver
+Active admin set to component {org.azshfa.waiver/ca.safehaven.intake.kiosk.KioskAdminReceiver}
 ```
 
 **Common errors** (exact wording varies a little between Android versions):
@@ -95,7 +103,7 @@ You can check the result with:
 adb shell dumpsys device_policy
 ```
 
-and look for `Device Owner` with `ca.safehaven.intake` underneath.
+and look for `Device Owner` with `org.azshfa.waiver` underneath.
 
 ## 4. Add the Google account and Google Drive (if backing up to Drive)
 
@@ -152,7 +160,7 @@ within a minute or so and pins.
   Plug the tablet into the PC used for setup (USB debugging must still be on, step 2) and run:
 
   ```
-  adb shell am broadcast -n ca.safehaven.intake/.staff.PinResetReceiver -a ca.safehaven.intake.RESET_STAFF_PIN
+  adb shell am broadcast -n org.azshfa.waiver/ca.safehaven.intake.staff.PinResetReceiver -a org.azshfa.waiver.RESET_STAFF_PIN
   ```
 
   `result=1` in the output means the PIN is forgotten. Long-press the logo and create a new one
@@ -242,10 +250,12 @@ accounts** can be made device owner the same way:
 
 ```
 adb install app/build/outputs/apk/debug/app-debug.apk
-adb shell dpm set-device-owner ca.safehaven.intake/.kiosk.KioskAdminReceiver
+adb shell dpm set-device-owner org.azshfa.waiver/ca.safehaven.intake.kiosk.KioskAdminReceiver
 ```
 
-Prints the same `Success: Device owner set to package ca.safehaven.intake` lines. Debug and release
+Prints the same `Success: Device owner set to package org.azshfa.waiver` lines. This needs a
+build with `kioskEnabled = true`; otherwise the app ignores device owner. The old
+`LG_GPad_X8_API23` AVD has a pre-rename build (`ca.safehaven.intake`) as device owner. Debug and release
 builds are signed with different keys, so you can't switch between them without undoing device
 owner.
 

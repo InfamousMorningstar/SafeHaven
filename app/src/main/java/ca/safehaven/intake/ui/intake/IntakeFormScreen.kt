@@ -48,7 +48,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -176,8 +178,16 @@ fun IntakeFormScreen(
 
                     if (form.saveFailed) {
                         ErrorBanner(R.string.form_save_failed)
-                    } else if (form.submitAttempted && form.errors.isNotEmpty() && !form.isSubmitting) {
-                        ErrorBanner(R.string.form_fix_errors)
+                    } else if (form.submitAttempted) {
+                        // Once shown, the banner keeps its space when the last error is fixed.
+                        // Removing it made the page jump down under the visitor's finger: the
+                        // signature is usually the last fix, and every stroke after the first
+                        // then landed above the pad and scrolled the page instead of drawing,
+                        // so the PDF got only part of the signature.
+                        ErrorBanner(
+                            R.string.form_fix_errors,
+                            visible = form.errors.isNotEmpty() && !form.isSubmitting,
+                        )
                     }
 
                     Row(
@@ -696,11 +706,14 @@ private fun ReasonChips(
 }
 
 @Composable
-private fun ErrorBanner(@StringRes message: Int) {
+private fun ErrorBanner(@StringRes message: Int, visible: Boolean = true) {
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // Hidden but still taking its space: see the call site.
+            .then(if (visible) Modifier else Modifier.alpha(0f).clearAndSetSemantics {}),
     ) {
         Text(
             stringResource(message),

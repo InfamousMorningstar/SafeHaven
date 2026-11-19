@@ -1,5 +1,6 @@
 package ca.safehaven.intake.ui.staff
 
+import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
@@ -171,6 +172,14 @@ private fun shareWaiver(
     authority: String,
     host: StaffHost,
 ): Boolean {
+    // Pinned with Android's own screen pinning (the pilot, without the kiosk): email and other
+    // share targets open in their own task, which Android silently refuses while pinned. Say so
+    // instead of doing nothing. (The device-owner kiosk unpins in the staff area by itself.)
+    val activityManager = context.getSystemService(ActivityManager::class.java)
+    if (activityManager?.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_PINNED) {
+        Toast.makeText(context, R.string.staff_viewer_share_unpin_first, Toast.LENGTH_LONG).show()
+        return false
+    }
     val uri = try {
         FileProvider.getUriForFile(context, authority, file)
     } catch (e: IllegalArgumentException) {

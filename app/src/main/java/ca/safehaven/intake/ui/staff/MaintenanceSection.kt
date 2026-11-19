@@ -33,6 +33,8 @@ import ca.safehaven.intake.R
 fun MaintenanceSection(
     changePin: PinFlowViewModel,
     isDeviceOwner: Boolean,
+    /** False when this build has the kiosk switched off (KIOSK_ENABLED). */
+    kioskInBuild: Boolean,
     appVersion: String,
     deviceLabel: String,
     waiverCount: Int?,
@@ -93,7 +95,7 @@ fun MaintenanceSection(
             )
         } else {
             Text(
-                stringResource(R.string.staff_maint_kiosk_off),
+                stringResource(if (kioskInBuild) R.string.staff_maint_kiosk_off else R.string.staff_maint_kiosk_disabled),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

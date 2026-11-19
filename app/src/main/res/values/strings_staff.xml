@@ -65,6 +65,7 @@
     <string name="staff_viewer_open_failed">Couldn\'t open this PDF.</string>
     <string name="staff_viewer_page_failed">Couldn\'t show this page.</string>
     <string name="staff_viewer_no_share_app">No app on this tablet can share PDFs.</string>
+    <string name="staff_viewer_share_unpin_first">The screen is pinned, so Android won\'t open other apps. Unpin it first: touch and hold Back and Recents together. Pin it again afterwards.</string>
     <string name="staff_delete_title">Delete waiver %1$s?</string>
     <string name="staff_delete_message">This deletes the signed PDF and its record from this tablet. It can\'t be undone, and the record number is never reused. If you might need it later, back it up first.</string>
     <string name="staff_delete_not_backed_up">Warning: this waiver has NOT been backed up. Once deleted, there is no copy anywhere.</string>
@@ -109,6 +110,7 @@
     <string name="staff_maint_kiosk_exit">Exit kiosk for maintenance</string>
     <string name="staff_maint_kiosk_exit_hint">Opens Android Settings. Kiosk mode comes back when you lock the staff area.</string>
     <string name="staff_maint_kiosk_off">Kiosk mode is off because this app isn\'t the device owner. See KIOSK_SETUP.md to set it up.</string>
+    <string name="staff_maint_kiosk_disabled">Kiosk mode isn\'t part of this version. To keep visitors in this app, pin it with Android\'s screen pinning (see the pilot guide). Backups work while pinned; to share a waiver, unpin first.</string>
     <string name="staff_maint_about_title">About</string>
     <string name="staff_maint_version">App version: %1$s</string>
     <string name="staff_maint_device">Device: %1$s</string>

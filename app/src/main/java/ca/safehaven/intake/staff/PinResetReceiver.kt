@@ -8,7 +8,7 @@ import ca.safehaven.intake.data.staff.SharedPrefsPinStore
 /**
  * The way back in after a forgotten staff PIN (KIOSK_SETUP.md): from a PC, over USB,
  *
- * `adb shell am broadcast -n ca.safehaven.intake/.staff.PinResetReceiver -a ca.safehaven.intake.RESET_STAFF_PIN`
+ * `adb shell am broadcast -n org.azshfa.waiver/ca.safehaven.intake.staff.PinResetReceiver -a org.azshfa.waiver.RESET_STAFF_PIN`
  *
  * forgets the PIN, and the next long-press on the logo asks for a new one. Waivers are kept.
  *
@@ -24,6 +24,6 @@ class PinResetReceiver : BroadcastReceiver() {
     }
 
     private companion object {
-        const val ACTION = "ca.safehaven.intake.RESET_STAFF_PIN"
+        const val ACTION = "org.azshfa.waiver.RESET_STAFF_PIN"
     }
 }

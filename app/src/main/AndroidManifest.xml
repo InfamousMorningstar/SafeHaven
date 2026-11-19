@@ -40,13 +40,24 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Lets the device owner make this the Home app, so it starts on boot. -->
+        </activity>
+
+        <!--
+          Kiosk only: lets the device owner make this the Home app, so it starts on boot and Home
+          comes back here. Enabled by KIOSK_ENABLED in app/build.gradle.kts. Without the kiosk it
+          stays disabled, or Android would ask the shelter which Home screen to use.
+        -->
+        <activity-alias
+            android:name=".KioskHome"
+            android:enabled="${kioskEnabled}"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <!-- Device-owner kiosk component (KIOSK_SETUP.md). -->
         <receiver
@@ -84,7 +95,7 @@
             android:exported="true"
             android:permission="android.permission.DUMP">
             <intent-filter>
-                <action android:name="ca.safehaven.intake.RESET_STAFF_PIN" />
+                <action android:name="org.azshfa.waiver.RESET_STAFF_PIN" />
             </intent-filter>
         </receiver>
 
